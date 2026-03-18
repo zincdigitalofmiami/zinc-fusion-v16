@@ -52,8 +52,10 @@ Track execution evidence for each gate.
 ## Gate 6
 - Command outputs:
   - `scripts/verify/gate6.sh`
-  - `parity-zl` and `parity-dashboard` skipped because `BASELINE_URL` not set
+  - `BASELINE_URL=http://127.0.0.1:4010 TARGET_URL=http://127.0.0.1:4010 ./scripts/verify/gate6.sh`
 - Date/time:
   - 2026-03-18 (America/Chicago)
 - Result:
-  - PASS (scaffold mode)
+  - SKIP (scaffold mode; explicit because `BASELINE_URL` was not set)
+- Verification note:
+  - Self-compare mode passed against the local stub server on `127.0.0.1:4010`

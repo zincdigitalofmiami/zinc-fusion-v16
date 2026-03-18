@@ -31,9 +31,21 @@ export async function GET() {
     );
   }
 
+  if (!data?.claims) {
+    return NextResponse.json(
+      {
+        ok: false,
+        authenticated: false,
+        error: "No authenticated user claims",
+        checkedAt: new Date().toISOString(),
+      },
+      { status: 401 },
+    );
+  }
+
   return NextResponse.json({
     ok: true,
-    authenticated: Boolean(data?.claims),
+    authenticated: true,
     checkedAt: new Date().toISOString(),
   });
 }
