@@ -7,6 +7,12 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
+  // API routes own their auth model (cron secret, route-level auth checks).
+  // Keep middleware auth focused on page navigation.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return supabaseResponse;
+  }
+
   // If the env vars are not set, skip proxy check. You can remove this
   // once you setup the project.
   if (!hasEnvVars) {

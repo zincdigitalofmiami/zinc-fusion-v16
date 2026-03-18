@@ -1,0 +1,45 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS mkt.price_1d (
+  id BIGSERIAL PRIMARY KEY,
+  symbol TEXT NOT NULL DEFAULT 'ZL',
+  bucket_ts TIMESTAMPTZ NOT NULL,
+  open NUMERIC(12, 4) NOT NULL,
+  high NUMERIC(12, 4) NOT NULL,
+  low NUMERIC(12, 4) NOT NULL,
+  close NUMERIC(12, 4) NOT NULL,
+  volume BIGINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(symbol, bucket_ts)
+);
+
+CREATE TABLE IF NOT EXISTS mkt.price_1h (LIKE mkt.price_1d INCLUDING ALL);
+CREATE TABLE IF NOT EXISTS mkt.price_15m (LIKE mkt.price_1d INCLUDING ALL);
+CREATE TABLE IF NOT EXISTS mkt.price_1m (LIKE mkt.price_1d INCLUDING ALL);
+
+CREATE TABLE IF NOT EXISTS mkt.latest_price (
+  symbol TEXT PRIMARY KEY,
+  price NUMERIC(12, 4) NOT NULL,
+  observed_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS mkt.futures_1d (
+  id BIGSERIAL PRIMARY KEY,
+  symbol TEXT NOT NULL,
+  observation_date DATE NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(symbol, observation_date)
+);
+
+CREATE TABLE IF NOT EXISTS mkt.options_1d (LIKE mkt.futures_1d INCLUDING ALL);
+CREATE TABLE IF NOT EXISTS mkt.fx_1d (LIKE mkt.futures_1d INCLUDING ALL);
+CREATE TABLE IF NOT EXISTS mkt.etf_1d (LIKE mkt.futures_1d INCLUDING ALL);
+CREATE TABLE IF NOT EXISTS mkt.vol_surface (LIKE mkt.futures_1d INCLUDING ALL);
+CREATE TABLE IF NOT EXISTS mkt.cftc_1w (LIKE mkt.futures_1d INCLUDING ALL);
+
+COMMIT;

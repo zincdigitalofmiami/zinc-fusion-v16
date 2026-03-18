@@ -1,0 +1,10 @@
+[project]
+name = "zinc-fusion-v16-pipeline"
+version = "0.1.0"
+description = "ZINC Fusion v16 Python pipeline scaffold"
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
