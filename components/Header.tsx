@@ -27,8 +27,8 @@ export default function Header() {
           <Image
             src={logoSrc}
             alt="ZINC FUSION"
-            width={200}
-            height={50}
+            width={400}
+            height={80}
             priority
           />
         </Link>
