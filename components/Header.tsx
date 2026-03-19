@@ -17,7 +17,8 @@ export default function Header() {
   const isDashboardSurface = navItems.some(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   )
-  const logoSrc = isDashboardSurface ? '/logo-dashboard.svg' : '/logo.svg'
+  const useDashboardLogo = pathname === '/' || isDashboardSurface
+  const logoSrc = useDashboardLogo ? '/logo-dashboard.svg' : '/logo.svg'
 
   return (
     <header className="header">
