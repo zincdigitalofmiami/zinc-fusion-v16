@@ -9,8 +9,21 @@ const inter = Inter({
   display: 'swap',
 });
 
+function resolveMetadataBase(): URL {
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+  if (configuredSiteUrl) {
+    return new URL(configuredSiteUrl);
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return new URL('https://zinc-fusion-v16.vercel.app');
+  }
+  return new URL('http://localhost:4010');
+}
+
 export const metadata: Metadata = {
-  title: 'ZINC Fusion V15',
+  metadataBase: resolveMetadataBase(),
+  title: 'ZINC Fusion V16',
   description: 'Institutional-Grade Commodity Intelligence',
 };
 

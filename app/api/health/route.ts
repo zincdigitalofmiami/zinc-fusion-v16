@@ -4,6 +4,9 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
 export async function GET() {
   const checkedAt = new Date().toISOString();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? null;
+  const siteUrlConfigured = Boolean(siteUrl);
+  const siteUrlIsLocalhost = Boolean(siteUrl && siteUrl.includes("localhost"));
 
   try {
     const admin = createSupabaseAdminClient();
@@ -14,7 +17,14 @@ export async function GET() {
       .limit(1);
 
     if (!error) {
-      return NextResponse.json({ ok: true, dbReachable: true, schemaReady: true, checkedAt });
+      return NextResponse.json({
+        ok: true,
+        dbReachable: true,
+        schemaReady: true,
+        siteUrlConfigured,
+        siteUrlIsLocalhost,
+        checkedAt,
+      });
     }
 
     const schemaNotReady = error.code === "42P01";
@@ -24,6 +34,8 @@ export async function GET() {
         ok: schemaNotReady,
         dbReachable: true,
         schemaReady: false,
+        siteUrlConfigured,
+        siteUrlIsLocalhost,
         error: error.message,
         checkedAt,
       },
@@ -35,6 +47,8 @@ export async function GET() {
         ok: false,
         dbReachable: false,
         schemaReady: false,
+        siteUrlConfigured,
+        siteUrlIsLocalhost,
         error: error instanceof Error ? error.message : "Unknown health error",
         checkedAt,
       },

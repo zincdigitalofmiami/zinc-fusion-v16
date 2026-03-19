@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { buildAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,7 +45,7 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          emailRedirectTo: buildAuthRedirectUrl("/auth/callback?next=/dashboard"),
         },
       });
       if (error) throw error;
