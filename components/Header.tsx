@@ -14,13 +14,17 @@ const navItems = [
 
 export default function Header() {
   const pathname = usePathname()
+  const isDashboardSurface = navItems.some(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+  )
+  const logoSrc = isDashboardSurface ? '/logo-dashboard.svg' : '/logo.svg'
 
   return (
     <header className="header">
       <nav className="nav-container">
         <Link href="/" className="logo">
           <Image
-            src="/logo.svg"
+            src={logoSrc}
             alt="ZINC FUSION"
             width={200}
             height={50}
