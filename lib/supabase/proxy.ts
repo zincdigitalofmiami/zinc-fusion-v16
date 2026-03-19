@@ -2,21 +2,49 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
 
+function isPublicPath(pathname: string): boolean {
+  return pathname === "/" || pathname.startsWith("/auth/");
+}
+
+function isCronPath(pathname: string): boolean {
+  return pathname.startsWith("/api/cron/");
+}
+
+function buildLoginRedirect(request: NextRequest): NextResponse {
+  const url = request.nextUrl.clone();
+  const next = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  url.pathname = "/auth/login";
+  url.searchParams.set("next", next);
+  return NextResponse.redirect(url);
+}
+
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
   let supabaseResponse = NextResponse.next({
     request,
   });
 
-  // API routes own their auth model (cron secret, route-level auth checks).
-  // Keep middleware auth focused on page navigation.
-  if (request.nextUrl.pathname.startsWith("/api/")) {
+  // Public splash and auth flows remain reachable without a session.
+  if (isPublicPath(pathname)) {
     return supabaseResponse;
   }
 
-  // If the env vars are not set, skip proxy check. You can remove this
-  // once you setup the project.
-  if (!hasEnvVars) {
+  // Cron routes are machine-to-machine; they enforce CRON_SECRET per route.
+  if (isCronPath(pathname)) {
     return supabaseResponse;
+  }
+
+  // Fail closed if auth env is missing for protected surfaces.
+  if (!hasEnvVars) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { ok: false, error: "Supabase auth env vars are not configured" },
+        { status: 503 },
+      );
+    }
+
+    return buildLoginRedirect(request);
   }
 
   // With Fluid compute, don't put this client in a global environment
@@ -50,19 +78,18 @@ export async function updateSession(request: NextRequest) {
 
   // IMPORTANT: If you remove getClaims() and you use server-side rendering
   // with the Supabase client, your users may be randomly logged out.
-  const { data } = await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  if (
-    request.nextUrl.pathname !== "/" &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
+  if (error || !user) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { ok: false, error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+
+    return buildLoginRedirect(request);
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

@@ -14,6 +14,11 @@ const navItems = [
 
 export default function Header() {
   const pathname = usePathname()
+
+  if (pathname !== "/") {
+    return null
+  }
+
   const isDashboardSurface = navItems.some(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   )

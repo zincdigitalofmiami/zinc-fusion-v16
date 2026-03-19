@@ -1,10 +1,12 @@
 @tailwind base;
+
+@custom-variant dark (&:is(.dark *));
 @tailwind components;
 @tailwind utilities;
 
 /* ==========================================================================
-   ZINC FUSION V15 — Design System (Canonical)
-   Source: zinc-fusion-v15-preview.html
+   ZINC FUSION V16 — Design Tokens (Canonical)
+   Source: product parity baseline
    ========================================================================== */
 
 :root {
@@ -19,14 +21,14 @@
   --bg-card-elevated-strong: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
   --bg-input: rgba(255, 255, 255, 0.05);
   --bg-chart: #131722;
-  
+
   /* Border Colors */
   --border: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.2);
   --border-subtle: rgba(255, 255, 255, 0.05);
   --border-card: rgba(255, 255, 255, 0.1);
   --border-card-hover: rgba(255, 255, 255, 0.2);
-  
+
   /* Text Colors */
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.8);
@@ -34,13 +36,13 @@
   --text-subtle: rgba(255, 255, 255, 0.6);
   --text-faint: rgba(255, 255, 255, 0.5);
   --text-ghost: rgba(255, 255, 255, 0.4);
-  
+
   /* Accent Colors */
   --accent-blue: #2962FF;
   --accent-blue-bg: rgba(41, 98, 255, 0.2);
   --accent-blue-border: rgba(41, 98, 255, 0.4);
   --accent-blue-light: rgba(41, 98, 255, 0.08);
-  
+
   /* Signal Colors */
   --signal-positive: #2962FF;
   --signal-negative: #ef5350;
@@ -48,7 +50,7 @@
   --signal-warning: #ffb464;
   --signal-yellow: #ffd54f;
   --signal-green: #81c784;
-  
+
   /* Signal Backgrounds */
   --signal-positive-bg: rgba(41, 98, 255, 0.2);
   --signal-negative-bg: rgba(239, 83, 80, 0.2);
@@ -56,13 +58,13 @@
   --signal-warning-bg: rgba(255, 180, 100, 0.2);
   --signal-negative-bg-light: rgba(239, 83, 80, 0.1);
   --signal-warning-bg-light: rgba(255, 180, 100, 0.08);
-  
+
   /* Signal Borders */
   --signal-positive-border: rgba(41, 98, 255, 0.4);
   --signal-negative-border: rgba(239, 83, 80, 0.4);
   --signal-warning-border: rgba(255, 180, 100, 0.4);
   --signal-negative-border-strong: rgba(239, 83, 80, 0.3);
-  
+
   /* Regime Chip Colors */
   --regime-stable-bg: rgba(41, 98, 255, 0.2);
   --regime-stable-border: rgba(41, 98, 255, 0.4);
@@ -79,18 +81,18 @@
   --regime-crisis-bg: rgba(255, 100, 100, 0.2);
   --regime-crisis-border: rgba(255, 100, 100, 0.4);
   --regime-crisis-text: #ffaaaa;
-  
+
   /* Confidence Badge */
   --confidence-high-bg: rgba(100, 255, 100, 0.2);
   --confidence-high-text: #aaffaa;
-  
+
   /* Gauge Gradient (Sell → Strong Buy) */
   --gauge-sell: #ef5350;
   --gauge-sell-light: #ffb74d;
   --gauge-neutral: #ffd54f;
   --gauge-buy: #81c784;
   --gauge-strong-buy: #2962FF;
-  
+
   /* Border Radius */
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -98,7 +100,7 @@
   --radius-xl: 10px;
   --radius-2xl: 12px;
   --radius-3xl: 16px;
-  
+
   /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
@@ -112,7 +114,7 @@
   --space-15: 60px;
   --space-20: 80px;
   --space-30: 120px;
-  
+
   /* Layout */
   --max-width: 1400px;
   --max-width-lg: 1600px;
@@ -120,10 +122,18 @@
   --status-bar-height: 48px;
   --header-height: 80px;
   --content-top: 128px;
-  
+
   /* Transitions */
   --transition-fast: 0.2s ease;
   --transition-normal: 0.3s ease;
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
 /* ==========================================================================
@@ -1674,3 +1684,25 @@ html, body {
 .data-point:nth-child(2) { top: 60%; left: 70%; animation-delay: 0.5s; }
 .data-point:nth-child(3) { top: 80%; left: 20%; animation-delay: 1s; }
 .data-point:nth-child(4) { top: 40%; left: 80%; animation-delay: 1.5s; }
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
