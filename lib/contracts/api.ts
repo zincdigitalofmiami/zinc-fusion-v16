@@ -77,8 +77,3 @@ export interface VegasIntelSnapshot {
   updatedAt: IsoDateTimeString;
 }
 
-export interface CronExecutionResult {
-  recordsUpserted: number;
-  notes?: string;
-  source?: string;
-}

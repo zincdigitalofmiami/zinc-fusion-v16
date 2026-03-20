@@ -5,11 +5,14 @@
 Commodity procurement forecasting system for ZL (soybean oil futures). Clean-room rebuild of V15 on Supabase — **no code transferred, everything written from scratch.**
 
 **Client:** US Oil Solutions (Las Vegas)
+
 - **Chris** (owner) BUYS raw soybean oil by the trainload for 100+ restaurant kitchens (Caesars, Boyd, Resorts World)
 - **Kevin** (sales director) uses Vegas Intel to pitch restaurants and schedule service around events
 - Chris is a BUYER. ZL going UP = bad for his costs. Strategy language (ACCUMULATE/WAIT) reflects this.
 
 **The migration plan is your bible:** [`docs/plans/2026-03-17-v16-migration-plan.md`](docs/plans/2026-03-17-v16-migration-plan.md) — 1,235 lines, 14 sections, every table/route/job/phase defined.
+
+**Mandatory planning standard for this repository:** Every new or revised plan must follow [`plans/zinc-fusion-v16-ralph-loop-workflow-guide.md`](plans/zinc-fusion-v16-ralph-loop-workflow-guide.md). Use it as the source of truth for Ralph Loop and Ralph Hooks planning, keep the workflow scoped to ZINC Fusion V16 only, and do not introduce `Warbird Pro` naming or cross-project references into this repository.
 
 ---
 
@@ -43,13 +46,13 @@ Install in this order — process skills first, then domain skills:
 
 These MCP servers should be active for this workspace:
 
-| Server | Purpose | Required? |
-|--------|---------|-----------|
-| `memory` | Knowledge graph — persist decisions across sessions | **Yes** |
-| `sequentialthinking` | Structured problem-solving for multi-step tasks | **Yes** |
-| `context7` | Up-to-date library docs (Supabase, Next.js, shadcn) | **Yes** |
-| `supabase` | Direct Supabase management (migrations, SQL, edge functions) | **Yes** |
-| `puppeteer` or `playwright` | Browser automation (ProFarmer testing) | Later |
+| Server                      | Purpose                                                      | Required? |
+| --------------------------- | ------------------------------------------------------------ | --------- |
+| `memory`                    | Knowledge graph — persist decisions across sessions          | **Yes**   |
+| `sequentialthinking`        | Structured problem-solving for multi-step tasks              | **Yes**   |
+| `context7`                  | Up-to-date library docs (Supabase, Next.js, shadcn)          | **Yes**   |
+| `supabase`                  | Direct Supabase management (migrations, SQL, edge functions) | **Yes**   |
+| `puppeteer` or `playwright` | Browser automation (ProFarmer testing)                       | Later     |
 
 **Memory API Contract:** Use graph API tools (`search_nodes`, `create_entities`, `add_observations`, `read_graph`). NOT simple-memory tools (`search_memory`, `list_memories`). If the wrong tools appear, fix the MCP config before proceeding.
 
@@ -62,6 +65,7 @@ docs/plans/2026-03-17-v16-migration-plan.md
 ```
 
 Pay special attention to:
+
 - **Section 4** — Schema design (9 schemas, every table defined)
 - **Section 5** — Job architecture (what replaces Inngest)
 - **Section 11** — Phased execution (what order to build things)
@@ -78,6 +82,7 @@ V15 lives at a separate path (likely `/Volumes/Satechi Hub/ZINC-FUSION-V15/` or 
 - How specialists generate signals
 
 You do NOT:
+
 - Copy files from V15
 - Import V15 modules
 - Reuse V15's Prisma migrations
@@ -88,19 +93,20 @@ You do NOT:
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Database** | Supabase Postgres (9 schemas) |
-| **Schema mgmt** | Supabase CLI migrations (SQL-first) |
-| **Frontend** | Next.js 14+ on Vercel |
-| **UI System** | Chanui dashboard template + shadcn/ui |
-| **Scheduling** | Vercel Cron (~25 routes) + Supabase pg_cron |
-| **DB client (TS)** | Supabase JS client (reads) + pg.Pool (bulk writes) |
-| **DB client (Python)** | psycopg2 direct to Supabase Postgres |
-| **ML** | AutoGluon (CPU-only), custom specialist models |
-| **Auth** | Supabase Auth |
-| **Package mgr** | npm (frontend), uv (Python) |
-| **Env mgmt** | Vercel <> Supabase integration, `vercel env pull` |
+| Layer                  | Technology                                         |
+| ---------------------- | -------------------------------------------------- |
+| **Database**           | Supabase Postgres — cloud only, no local Supabase  |
+| **Schema mgmt**        | Supabase CLI migrations (SQL-first, `db push` to cloud) |
+| **Frontend**           | Next.js 14+ on Vercel (frontend hosting ONLY)      |
+| **UI System**          | shadcn/ui + Radix primitives + Tailwind CSS        |
+| **Data ingestion**     | pg_cron + `http` extension (inside Postgres, $0 cost) |
+| **DB client (TS)**     | Supabase JS client (reads only)                    |
+| **DB client (Python)** | psycopg2 direct to cloud Supabase Postgres         |
+| **ML**                 | AutoGluon (CPU-only), custom specialist models     |
+| **Auth**               | Supabase Auth                                      |
+| **API secrets**        | Supabase Vault (accessed via `current_setting()`)  |
+| **Package mgr**        | npm (frontend), uv (Python)                        |
+| **Env mgmt**           | Vercel <> Supabase integration, `vercel env pull`  |
 
 ---
 
@@ -112,15 +118,21 @@ You do NOT:
 2. **Target = future PRICE LEVEL** (`close.shift(-horizon)`), columns named `target_price_{h}d`. Never returns.
 3. **Target Zones = horizontal lines** at price levels. NEVER say: cones, bands, funnels, confidence intervals.
 4. **Probability language:** "ZL has an X% chance of hitting XX.XX by [date]" — derived from Monte Carlo (10k runs) + pinball loss + MAE/accuracy %.
-5. **No Inngest.** All scheduling via Vercel Cron + pg_cron + Python workers. Period.
+5. **No Inngest. No Vercel Cron.** All scheduling via Supabase pg_cron + `http` extension. Vercel is frontend hosting ONLY.
 6. **9 schemas:** mkt, econ, alt, supply, training, forecasts, analytics, ops, vegas. No others.
 7. **ProFarmer is mandatory** ($500/month). Rebuilt as Python Playwright scraper, not Node.js Puppeteer.
 8. **Training gate:** NEVER start model training without explicit user approval.
-9. **Chart is sacred.** Clone from V15 reference with zero modifications to settings or behavior.
-10. **Landing page is sacred.** Clone from V15 reference — specific design that must be preserved.
+9. **Chart is sacred.** REWRITE from scratch using V15 as visual reference — zero modifications to behavior. NEVER copy V15 code.
+10. **Landing page is sacred.** REWRITE from scratch using V15 as visual reference — preserve the design identity. NEVER copy V15 code.
+11. **ZERO mock data.** No placeholders, no temps, no demo/synthetic/random data anywhere, ever. Empty state until real data flows. This is the HARDEST rule.
+12. **ZERO code copying.** Every line of V16 is written fresh. V15 is a visual reference only. Clone-and-clean failed catastrophically — never again.
+13. **No local Supabase / No Docker.** Cloud Supabase only. Supabase CLI for migrations (`db push`). No `supabase start`.
+14. **No hardcoded port 3000.** Dev server port must be checked for availability first.
+15. **Design holdoff.** Do not propose UI design changes until user signals readiness. Build clean structure, defer aesthetics.
 
 ### Process Rules
 
+0. **Plan creation and plan revisions must follow the Ralph Loop Workflow Guide.** For any new or revised plan, use [`plans/zinc-fusion-v16-ralph-loop-workflow-guide.md`](plans/zinc-fusion-v16-ralph-loop-workflow-guide.md) by default.
 1. **Read the migration plan before touching code.** It defines every table, route, job, and phase.
 2. **Follow the phase order.** Phase 0 before Phase 1. Phase 1 before Phase 2. No skipping.
 3. **Run evaluation gates.** Each phase has specific checks. Don't declare done until they pass.
@@ -129,15 +141,16 @@ You do NOT:
 6. **Memory first.** Search memory at session start, store decisions immediately.
 7. **Brainstorm before building.** Use the superpowers brainstorming skill for any non-trivial feature.
 8. **Verify before claiming done.** Use the superpowers verification skill.
+9. **Checkpoint before implementation.** For non-trivial planning work, audit repo reality first, structure the plan as numbered decision checkpoints, run one Ralph Loop per checkpoint, and update docs after each locked decision.
 
 ### Security Rules
 
 1. No `service_role` key exposed to browser — ever.
-2. All `/api/cron/*` routes must check `CRON_SECRET` header.
-3. `NEXT_PUBLIC_*` vars contain only anon key and URL.
-4. No manual `.env` copying. Use `vercel env pull` exclusively.
-5. ProFarmer credentials stay local — never deployed to Vercel.
-6. RLS enabled on every table from day one.
+2. `NEXT_PUBLIC_*` vars contain only anon key and URL.
+3. No manual `.env` copying. Use `vercel env pull` exclusively.
+4. ProFarmer credentials stay local — never deployed to Vercel.
+5. RLS enabled on every table from day one.
+6. API keys for data ingestion stored in Supabase Vault — not env vars, not hardcoded.
 
 ---
 
@@ -157,19 +170,20 @@ Never use these in code, comments, UI, or conversation:
 
 Full details in the migration plan. Quick reference:
 
-| Phase | What | Key Deliverable |
-|-------|------|-----------------|
-| **0** | Infrastructure foundation | Supabase + Vercel + Chanui + health route |
-| **1** | Schema & seed | All 9 schemas, RLS, indexes, Gate 2 passes |
-| **2** | Read path — chart & live price | Chart renders with real data from Supabase |
-| **3** | Landing page | Faithful clone of V15 landing design |
-| **4** | Critical cron routes | ZL daily, intraday, FRED, futures updating |
-| **5** | Python pipeline rebuild | Full ML pipeline against cloud Supabase |
-| **6** | Remaining cron routes | All data sources feeding, ProFarmer working |
-| **7** | Dashboard completion | Target Zones, drivers, regime, cards — all live |
-| **8** | Secondary pages | Sentiment, Legislation, Strategy, Vegas Intel |
-| **9** | Auth & observability | Supabase Auth, monitoring, Gate 3 passes |
-| **10** | Parallel validation & cutover | V15/V16 parity confirmed, traffic switched |
+| Phase  | What                           | Key Deliverable                                 |
+| ------ | ------------------------------ | ----------------------------------------------- |
+| **0**  | Infrastructure foundation      | Supabase cloud + Vercel + shadcn/ui + health route |
+| **1**  | Schema & seed                  | All 9 schemas, RLS, indexes, Gate 2 passes      |
+| **1.5** | **All page rewrites**         | All 6 pages rewritten from scratch (V15 visual ref only). Empty state until data wired. |
+| **2**  | Read path — chart & live price | Chart renders with real data from Supabase      |
+| **3**  | Landing page completion        | Faithful rewrite of V15 landing design          |
+| **4**  | Data ingestion (pg_cron+http)  | ZL daily, intraday, FRED, futures — all via Supabase pg_cron |
+| **5**  | Python pipeline rebuild        | Full ML pipeline, local files for intermediates, promote to cloud |
+| **6**  | Remaining ingestion + ProFarmer | All data sources feeding via pg_cron+http, ProFarmer Playwright |
+| **7**  | Dashboard completion           | Target Zones, drivers, regime, cards — all live |
+| **8**  | Secondary pages wiring         | Sentiment, Legislation, Strategy, Vegas Intel — real data |
+| **9**  | Auth & observability           | Supabase Auth, monitoring, Gate 3 passes        |
+| **10** | Parallel validation & cutover  | V15/V16 parity confirmed, traffic switched      |
 
 ---
 
@@ -178,10 +192,11 @@ Full details in the migration plan. Quick reference:
 ### Connection Strategy
 
 ```
-Frontend (reads):  Supabase JS client with anon key + JWT
-Frontend (crons):  Supabase JS client with service_role key
-Python (writes):   psycopg2 direct connection (port 5432) — no pooler for bulk
-Python (reads):    psycopg2 pooled connection (port 6543)
+Frontend (reads):      Supabase JS client with anon key + JWT
+Data ingestion:        pg_cron + http extension (runs inside Postgres — no external connection)
+Python (reads):        psycopg2 pooled connection to cloud (port 6543)
+Python (promotes):     psycopg2 direct connection to cloud (port 5432) — validated outputs only
+Python (intermediates): local parquet files — never written to any database
 ```
 
 ### Migration Pattern
@@ -190,23 +205,27 @@ Python (reads):    psycopg2 pooled connection (port 6543)
 # Create a new migration
 supabase migration new <name>
 
-# Apply locally
-supabase db reset
-
-# Push to cloud
+# Push directly to cloud (no local Supabase needed)
 supabase db push
+
+# Diff against cloud
+supabase db diff --linked
 ```
 
-Never do manual DDL on cloud. Migrations are the single source of truth.
+Never do manual DDL on cloud. Migrations are the single source of truth. No `supabase start` — cloud only.
 
-### Cron Route Pattern
+### Data Ingestion Pattern (pg_cron + http extension)
 
-Every `/api/cron/*` route follows this structure:
-1. Check `CRON_SECRET` header — reject if missing/wrong
-2. Fetch from external API
-3. Transform data
-4. UPSERT to Supabase
+All data ingestion runs inside Postgres as plpgsql functions:
+
+1. pg_cron triggers the function on schedule
+2. `http_get()` fetches from external API (synchronous, in-transaction)
+3. Parse JSON response in plpgsql
+4. UPSERT to target table
 5. Log to `ops.ingest_run`
+6. API keys from Supabase Vault via `current_setting()`
+
+No Vercel cron routes. No CRON_SECRET. No serverless functions for ingestion.
 
 ### RLS Pattern
 
@@ -312,13 +331,14 @@ V16 is complete when:
 
 - The chart renders correctly with real ZL data from Supabase
 - Target Zones render correctly (P30/P50/P70 horizontal lines)
-- The landing page matches V15's premium design identity
+- The landing page matches V15's premium design identity (rewritten, not copied)
 - All 6 pages are operational with real data
 - Only validated routes and jobs exist (no legacy baggage)
-- Supabase owns the clean database with RLS enforced
-- Vercel owns deployment and env injection
-- ~25 Vercel Cron routes keep data fresh (no Inngest anywhere)
-- Python pipeline runs end-to-end against cloud Supabase
-- ProFarmer scraper is working ($500/mo source)
+- Supabase owns the clean database with RLS enforced — cloud only, no local DB
+- Vercel is frontend hosting ONLY — zero crons, zero ingestion compute
+- ~22 pg_cron + http functions keep data fresh inside Supabase ($0 incremental)
+- Python pipeline runs end-to-end: reads cloud → local files → promotes to cloud
+- ProFarmer Playwright scraper is working ($500/mo source, 7 sections, 35 runs/week)
 - Auth protects dashboard routes
+- Zero mock data anywhere in the codebase
 - V15 can be turned off without losing functionality

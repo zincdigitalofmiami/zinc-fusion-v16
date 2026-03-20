@@ -1,12 +1,12 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import {
   IconDashboard,
   IconFlame,
   IconGavel,
   IconHelp,
-  IconInnerShadowTop,
   IconMoodSmile,
   IconSearch,
   IconTargetArrow,
@@ -80,11 +80,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              className="data-[slot=sidebar-menu-button]:!p-2 data-[slot=sidebar-menu-button]:!h-auto"
             >
               <a href="/dashboard">
-                <IconInnerShadowTop className="size-5!" />
-                <span className="text-base font-semibold">ZINC Fusion V16</span>
+                <Image
+                  src="/logo-dashboard.svg"
+                  alt="ZINC Fusion"
+                  width={140}
+                  height={32}
+                  className="dark:invert-0"
+                  priority
+                />
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

@@ -1,100 +1,124 @@
-import { IconTrendingUp } from "@tabler/icons-react"
+"use client"
 
-import { Badge } from "@/components/ui/badge"
+import { useEffect, useState } from "react"
+
 import {
   Card,
-  CardAction,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+
+interface LivePrice {
+  price: number
+  observedAt: string
+}
+
+interface RegimeData {
+  regime: string
+  confidence: number
+}
 
 export function SectionCards() {
+  const [livePrice, setLivePrice] = useState<LivePrice | null>(null)
+  const [regime, setRegime] = useState<RegimeData | null>(null)
+  const [drivers, setDrivers] = useState<{ factor: string; contribution: number }[]>([])
+  const [targetZones, setTargetZones] = useState<{ horizonDays: number; p50: number }[]>([])
+
+  useEffect(() => {
+    Promise.allSettled([
+      fetch("/api/zl/live").then((r) => r.json()),
+      fetch("/api/dashboard/regime").then((r) => r.json()),
+      fetch("/api/dashboard/drivers").then((r) => r.json()),
+      fetch("/api/zl/target-zones").then((r) => r.json()),
+    ]).then(([live, reg, drv, tz]) => {
+      if (live.status === "fulfilled" && live.value.data)
+        setLivePrice(live.value.data)
+      if (reg.status === "fulfilled" && reg.value.data)
+        setRegime(reg.value.data)
+      if (drv.status === "fulfilled" && drv.value.data)
+        setDrivers(drv.value.data)
+      if (tz.status === "fulfilled" && tz.value.data)
+        setTargetZones(tz.value.data)
+    })
+  }, [])
+
+  const topDriver = drivers[0]
+
   return (
-    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
-      <Card className="@container/card">
+    <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      {/* ZL Live Price */}
+      <Card>
         <CardHeader>
-          <CardDescription>Page Surfaces</CardDescription>
+          <CardDescription>ZL Soybean Oil</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            5
+            {livePrice ? livePrice.price.toFixed(2) : "—"}
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              +1
-            </Badge>
-          </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Dashboard modules online <IconTrendingUp className="size-4" />
-          </div>
           <div className="text-muted-foreground">
-            `/dashboard`, `/strategy`, `/legislation`, `/sentiment`, `/vegas-intel`
+            {livePrice
+              ? `Updated ${new Date(livePrice.observedAt).toLocaleDateString()}`
+              : "Awaiting price data"}
           </div>
         </CardFooter>
       </Card>
-      <Card className="@container/card">
+
+      {/* Regime */}
+      <Card>
         <CardHeader>
-          <CardDescription>Protected APIs</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            14
+          <CardDescription>Market Regime</CardDescription>
+          <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl">
+            {regime ? regime.regime : "—"}
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              Active
-            </Badge>
-          </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Auth required on all non-cron API routes <IconTrendingUp className="size-4" />
-          </div>
           <div className="text-muted-foreground">
-            Cron endpoints stay CRON_SECRET protected
+            {regime
+              ? `${(regime.confidence * 100).toFixed(0)}% confidence`
+              : "Awaiting regime data"}
           </div>
         </CardFooter>
       </Card>
-      <Card className="@container/card">
+
+      {/* Top Driver */}
+      <Card>
         <CardHeader>
-          <CardDescription>Data Schemas</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            9
+          <CardDescription>Top Driver</CardDescription>
+          <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl">
+            {topDriver ? topDriver.factor : "—"}
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              Ready
-            </Badge>
-          </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Core schema domains provisioned <IconTrendingUp className="size-4" />
+          <div className="text-muted-foreground">
+            {topDriver ? (
+              <Badge variant={topDriver.contribution > 0 ? "default" : "destructive"}>
+                {topDriver.contribution > 0 ? "+" : ""}
+                {topDriver.contribution.toFixed(1)}%
+              </Badge>
+            ) : (
+              "Awaiting driver data"
+            )}
           </div>
-          <div className="text-muted-foreground">mkt/econ/alt/supply/training/forecasts/analytics/ops/vegas</div>
         </CardFooter>
       </Card>
-      <Card className="@container/card">
+
+      {/* Target Zone (nearest horizon) */}
+      <Card>
         <CardHeader>
-          <CardDescription>Ingestion Jobs</CardDescription>
+          <CardDescription>
+            {targetZones[0] ? `${targetZones[0].horizonDays}d Target` : "Target Zone"}
+          </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            26
+            {targetZones[0] ? targetZones[0].p50.toFixed(2) : "—"}
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              Scheduled
-            </Badge>
-          </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Cron route set provisioned <IconTrendingUp className="size-4" />
+          <div className="text-muted-foreground">
+            {targetZones[0] ? "P50 median forecast" : "Awaiting forecast data"}
           </div>
-          <div className="text-muted-foreground">Market, policy, supply, and ops feeds mapped</div>
         </CardFooter>
       </Card>
     </div>

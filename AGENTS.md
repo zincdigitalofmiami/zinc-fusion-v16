@@ -22,3 +22,27 @@ Clarify — Only now do you bring questions to me, and they should be sharp, spe
 Design — Propose the model. Show the schema, the relationships, the constraints. Explain every decision.
 Validate — Stress-test your own design. What breaks? What edge cases exist? What happens at scale?
 Implement — Build it right. Migrations, seed data, documentation — the whole thing, not just the pretty diagram.
+
+## ZINC Fusion V16 Ralph Loop Planning Standard
+
+For this repository only, every new or revised plan must follow [`plans/zinc-fusion-v16-ralph-loop-workflow-guide.md`](plans/zinc-fusion-v16-ralph-loop-workflow-guide.md) by default.
+
+Mandatory planning defaults:
+
+1. Audit repository reality before making architecture or refactoring decisions.
+2. Write plan documents as numbered checkpoints that capture decisions, not implementation tasks.
+3. Run one Ralph Loop per checkpoint and write a decision document for each checkpoint.
+4. Update canonical planning docs, [`AGENTS.md`](AGENTS.md), and [`CLAUDE.md`](CLAUDE.md) whenever a checkpoint changes verified ground truth.
+5. Implement only after all checkpoint decisions are locked.
+6. Keep all naming scoped to ZINC Fusion V16 in this repository. Do not introduce or reuse `Warbird Pro` naming, references, or examples here.
+
+### Reasoning Guardrails
+
+- Prefer less complexity, fewer moving parts, and better naming.
+- Do not preserve old paths just because they already exist.
+- Do not keep both old and new paths alive unless there is a clear migration reason.
+- Do not let ephemeral live-feed logic become retained training truth.
+- Do not silently increase vendor cost exposure.
+- Do not introduce weak names like `v2`, `new`, `final`, or `tmp`.
+- Do not add any dependency, extension, or paid-plan assumption without an explicit reason.
+- Ground decisions in repo reality, not aspirational docs.

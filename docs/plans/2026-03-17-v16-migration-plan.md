@@ -50,8 +50,8 @@
 3. Every page must justify its data dependencies
 4. Every job must justify its existence
 5. Start from the screen, not the schema
-6. Clone the chart with zero changes — settings were hard-won
-7. Clone the landing page design — specific and intentional
+6. Rewrite the chart from scratch using V15 as visual reference — settings were hard-won, preserve behavior exactly
+7. Rewrite the landing page from scratch using V15 as visual reference — specific and intentional design to preserve
 8. ProFarmer is mandatory ($500/month)
 9. 11 specialists — never 10. `trump_effect` is the 11th.
 10. Target = future price level. Target Zones = horizontal lines. Never cones, bands, or funnels.
@@ -72,8 +72,8 @@
 
 ### V16 Page Surface (6 pages — Quant dropped)
 
-1. **`/`** — Landing page (CLONE from V15 — specific design to preserve)
-2. **`/dashboard`** — ZL candlestick chart (CLONE) + Target Zones + live price + regime + drivers + cards
+1. **`/`** — Landing page (rewrite from scratch using V15 as visual reference — ZERO code copied, ZERO mock data)
+2. **`/dashboard`** — ZL candlestick chart (rewrite from scratch using V15 as visual reference) + Target Zones + live price + regime + drivers + cards
 3. **`/strategy`** — Posture recommendation, contract impact calculator, factor waterfall (keep content, redesign layout)
 4. **`/legislation`** — Federal Register / policy tracking (clean rebuild)
 5. **`/sentiment`** — News sentiment, CoT positioning, narrative (keep first 3-4 rows)
@@ -97,7 +97,7 @@
 ### What Dies (V15 baggage that does NOT cross)
 
 - 34 Prisma migrations
-- 104 Inngest functions (replaced by pg_cron + Vercel Cron + Python workers)
+- 104 Inngest functions (replaced by pg_cron + http extension + Python workers)
 - Docker Inngest local dev container and healing scripts
 - Duplicate/overlapping data ingestion jobs
 - Dead tables (`eia_biodiesel_1w` with 0 rows, `uco_prices_1w` with 0 rows)
@@ -119,24 +119,25 @@
 |-------|---------------|--------------|
 | **Database** | Prisma Postgres (cloud) | Supabase Postgres |
 | **Schema mgmt** | Prisma + 34 migrations | Supabase migrations (SQL-first) |
-| **Frontend** | Next.js on Vercel | Next.js on Vercel (new project) + Chanui dashboard template |
-| **Scheduling** | Inngest (104 functions, Docker) | pg_cron + Vercel Cron (~25 routes) |
+| **Frontend** | Next.js on Vercel | Next.js on Vercel (new project) + shadcn/ui + Radix + Tailwind CSS |
+| **Scheduling** | Inngest (104 functions, Docker) | pg_cron + http extension (all ingestion inside Postgres) |
 | **DB client (TS)** | pg.Pool + Prisma for validation | Supabase JS client + pg.Pool for bulk |
 | **DB client (Python)** | psycopg2 direct | psycopg2 direct to Supabase Postgres |
 | **ML** | AutoGluon (local, CPU) | AutoGluon (local, CPU) — rebuilt clean |
 | **Specialists** | 11 Python signal generators | 11 Python signal generators — rebuilt clean |
 | **Auth** | Custom cookie-based | Supabase Auth |
 | **Env mgmt** | Manual .env.local | Vercel <> Supabase integration, `vercel env pull` |
-| **UI system** | Mixed CSS + shadcn/ui | Chanui template + shadcn/ui + ZINC Fusion brand tokens |
+| **API secrets** | Manual env vars | Supabase Vault (`current_setting()`) |
+| **UI system** | Mixed CSS + shadcn/ui | shadcn/ui + Radix + Tailwind CSS + ZINC Fusion brand tokens |
 
-### Local vs Cloud Supabase — Recommendation
+### Cloud Supabase ONLY — No Local Supabase, No Docker
 
-| Scenario | Recommendation | Why |
-|----------|---------------|-----|
-| **Frontend dev** | Local Supabase (`supabase start`) | Fast iteration, no cloud cost, isolated |
-| **Python training/inference** | **Cloud Supabase directly** | Training writes large matrices (1500+ cols). Local Supabase means syncing artifacts to cloud afterward — extra step with drift risk. Write directly to cloud. |
-| **Data ingestion crons** | Cloud Supabase | Crons run on Vercel/pg_cron against production DB |
-| **CI/testing** | Local Supabase | Ephemeral, seeded with fixtures |
+| Scenario | Approach | Why |
+|----------|----------|-----|
+| **Frontend dev** | Reads from cloud Supabase | Single source of truth. No local/cloud drift. `vercel env pull` provides connection. |
+| **Python training/inference** | Reads raw data from cloud Supabase. Writes intermediates to **LOCAL FILES** (parquet). Promotes validated outputs to cloud. | Large matrices stay local during iteration. Only final validated artifacts touch cloud DB. |
+| **Data ingestion** | Runs **INSIDE Postgres** via pg_cron + http extension | No Vercel cron routes. No external orchestrator. Ingestion is a database-native operation. |
+| **Supabase CLI** | Used for migrations ONLY (`supabase db push`, `supabase db diff --linked`) | No `supabase start`. No local Docker containers. No local Postgres. |
 
 **Guard rail:** Create a `training` Postgres role that can only write to `training.*` and `forecasts.*` schemas. The Python pipeline uses this role. Frontend service role is read-only on those schemas.
 
@@ -151,33 +152,31 @@
                             |
 +---------------------------v-------------------------------+
 |                       VERCEL                               |
-|  App Router pages + API routes                             |
-|  Vercel Cron (~25 consolidated ingestion triggers)         |
+|  Frontend hosting ONLY + read-only API routes              |
+|  No cron routes. No data ingestion.                        |
 |  Env: auto-injected via Supabase integration               |
 +---------------------------+-------------------------------+
                             |
 +---------------------------v-------------------------------+
 |                      SUPABASE                              |
-|  Postgres (9 schemas: mkt, econ, alt, supply, training,   |
-|            forecasts, analytics, ops, vegas)                |
-|  pg_cron (DB-level scheduled maintenance)                  |
+|  Single cloud DB (9 schemas: mkt, econ, alt, supply,      |
+|    training, forecasts, analytics, ops, vegas)              |
+|  pg_cron + http extension (ALL data ingestion ~25 jobs)    |
+|  Vault (API keys via current_setting())                    |
 |  Auth (user authentication)                                |
 |  RLS policies per schema                                   |
-+---------------------------+-------------------------------+
-                            |
-+---------------------------v-------------------------------+
-|              LOCAL / EXTERNAL COMPUTE                      |
++-----------------------------------------------------------+
+
++-----------------------------------------------------------+
+|              LOCAL MACHINE                                  |
 |  Python ML Pipeline (rebuilt from scratch)                  |
-|  - build_matrix -> training.matrix_1d                      |
-|  - train_models -> model artifacts + training.* tables     |
-|  - generate_forecasts -> forecasts.* tables                |
-|  - run_monte_carlo -> forecasts.monte_carlo_*              |
-|  - generate_specialist_signals -> training.specialist_*    |
-|  - generate_target_zones -> forecasts.target_zones (NEW)   |
-|  Writes directly to Cloud Supabase via psycopg2            |
+|  - Reads raw data from cloud Supabase via psycopg2         |
+|  - Writes intermediates to LOCAL FILES (parquet)           |
+|  - promote_to_cloud.py pushes validated outputs to cloud   |
 |                                                            |
 |  ProFarmer Scraper (Python Playwright, system cron)        |
-+------------------------------------------------------------+
+|  - Writes directly to cloud Supabase                       |
++-----------------------------------------------------------+
 ```
 
 ---
@@ -196,43 +195,43 @@
 
 | Table | Purpose | Writer | Reader | Granularity |
 |-------|---------|--------|--------|-------------|
-| `price_1d` | ZL daily OHLCV — powers the chart | Vercel Cron: zl-daily | Dashboard chart, all pages | Daily |
-| `price_1h` | ZL hourly bars | Vercel Cron: zl-intraday | Intraday chart view | Hourly |
-| `price_15m` | ZL 15-min bars | Vercel Cron: zl-intraday | Intraday chart zoom | 15min |
-| `price_1m` | ZL 1-min bars (90-day retention) | Vercel Cron: zl-intraday | Fine-grain chart | 1min |
-| `latest_price` | Most recent ZL price + timestamp | Vercel Cron: zl-intraday, pg_cron rollup | Status bar, live ticker | Real-time |
-| `futures_1d` | 84 commodity/index futures daily | Vercel Cron: databento-futures | Specialist features, cross-asset | Daily |
-| `options_1d` | ZL options chain | Vercel Cron: databento-options | Vol surface | Daily |
-| `fx_1d` | FX rates | Vercel Cron: fx-daily | FX specialist | Daily |
-| `etf_1d` | Sector/commodity ETFs | Vercel Cron: etf-daily | Substitutes specialist | Daily |
+| `price_1d` | ZL daily OHLCV — powers the chart | pg_cron: zl-daily | Dashboard chart, all pages | Daily |
+| `price_1h` | ZL hourly bars | pg_cron: zl-intraday | Intraday chart view | Hourly |
+| `price_15m` | ZL 15-min bars | pg_cron: zl-intraday | Intraday chart zoom | 15min |
+| `price_1m` | ZL 1-min bars (90-day retention) | pg_cron: zl-intraday | Fine-grain chart | 1min |
+| `latest_price` | Most recent ZL price + timestamp | pg_cron: zl-intraday, pg_cron rollup | Status bar, live ticker | Real-time |
+| `futures_1d` | 84 commodity/index futures daily | pg_cron: databento-futures | Specialist features, cross-asset | Daily |
+| `options_1d` | ZL options chain | pg_cron: databento-options | Vol surface | Daily |
+| `fx_1d` | FX rates | pg_cron: fx-daily | FX specialist | Daily |
+| `etf_1d` | Sector/commodity ETFs | pg_cron: etf-daily | Substitutes specialist | Daily |
 | `vol_surface` | ZL implied vol surface | Derived from options_1d | Volatility specialist | Daily |
-| `cftc_1w` | CFTC positioning (absorbed from `pos`) | Vercel Cron: cftc-weekly | Sentiment page, CoT | Weekly |
+| `cftc_1w` | CFTC positioning (absorbed from `pos`) | pg_cron: cftc-weekly | Sentiment page, CoT | Weekly |
 
 ### Schema: `econ` (Macro/Economic)
 
 | Table | Purpose | Writer | Reader | Granularity |
 |-------|---------|--------|--------|-------------|
-| `rates_1d` | Interest rates, yields, SOFR, Fed Funds | Vercel Cron: fred | Fed specialist, trump_effect specialist | Daily |
-| `inflation_1d` | CPI, PPI, PCE | Vercel Cron: fred | Macro context | Monthly |
-| `labor_1d` | Employment, claims | Vercel Cron: fred | Macro context | Weekly/Monthly |
-| `activity_1d` | GDP, industrial production, crop progress | Vercel Cron: fred, nass-weekly | Macro context | Varies |
-| `money_1d` | M2, reserves | Vercel Cron: fred | Fed specialist | Monthly |
-| `vol_indices_1d` | VIX, MOVE, OVX | Vercel Cron: fred | Volatility specialist | Daily |
-| `commodities_1d` | FRED commodity prices (crude, gas, palm, soy, tallow PPI, UCO proxies) | Vercel Cron: fred, palm-oil | Multiple specialists | Daily |
-| `weather_1d` | Temperature, precipitation, drought indices | Vercel Cron: weather | Weather features, supply context | Daily |
+| `rates_1d` | Interest rates, yields, SOFR, Fed Funds | pg_cron: fred | Fed specialist, trump_effect specialist | Daily |
+| `inflation_1d` | CPI, PPI, PCE | pg_cron: fred | Macro context | Monthly |
+| `labor_1d` | Employment, claims | pg_cron: fred | Macro context | Weekly/Monthly |
+| `activity_1d` | GDP, industrial production, crop progress | pg_cron: fred, nass-weekly | Macro context | Varies |
+| `money_1d` | M2, reserves | pg_cron: fred | Fed specialist | Monthly |
+| `vol_indices_1d` | VIX, MOVE, OVX | pg_cron: fred | Volatility specialist | Daily |
+| `commodities_1d` | FRED commodity prices (crude, gas, palm, soy, tallow PPI, UCO proxies) | pg_cron: fred, palm-oil | Multiple specialists | Daily |
+| `weather_1d` | Temperature, precipitation, drought indices | pg_cron: weather | Weather features, supply context | Daily |
 
 ### Schema: `alt` (Alternative Intel)
 
 | Table | Purpose | Writer | Reader | Granularity |
 |-------|---------|--------|--------|-------------|
 | `profarmer_news` | ProFarmer articles ($500/mo, mandatory) | Python Playwright scraper | Sentiment page, biofuel specialist | Daily |
-| `legislation_1d` | Federal Register regulations | Vercel Cron: legislation | Legislation page | Daily |
-| `executive_actions` | White House executive orders | Vercel Cron: legislation | Legislation page, tariff specialist | Daily |
-| `congress_bills` | Congressional bills (NEW — V15 had no table) | Vercel Cron: legislation | Legislation page | Daily |
-| `fed_speeches` | Fed speeches (NEW — V15 had no table) | Vercel Cron: legislation | Fed specialist | Daily |
-| `ice_enforcement` | ICE trade enforcement | Vercel Cron: trade-policy | Tariff specialist | Daily |
-| `news_events` | Aggregated news with `source` discriminator column (Google, CONAB, FRED Blog, ESMIS, CBP, AEI, FarmDoc, biofuel RSS) | Vercel Cron: news, trade-policy, biofuel-policy | Sentiment page | Daily |
-| `tariff_deadlines` | Upcoming tariff dates/actions | Vercel Cron: trade-policy | Strategy page, tariff specialist | Event-driven |
+| `legislation_1d` | Federal Register regulations | pg_cron: legislation | Legislation page | Daily |
+| `executive_actions` | White House executive orders | pg_cron: legislation | Legislation page, tariff specialist | Daily |
+| `congress_bills` | Congressional bills (NEW — V15 had no table) | pg_cron: legislation | Legislation page | Daily |
+| `fed_speeches` | Fed speeches (NEW — V15 had no table) | pg_cron: legislation | Fed specialist | Daily |
+| `ice_enforcement` | ICE trade enforcement | pg_cron: trade-policy | Tariff specialist | Daily |
+| `news_events` | Aggregated news with `source` discriminator column (Google, CONAB, FRED Blog, ESMIS, CBP, AEI, FarmDoc, biofuel RSS) | pg_cron: news, trade-policy, biofuel-policy | Sentiment page | Daily |
+| `tariff_deadlines` | Upcoming tariff dates/actions | pg_cron: trade-policy | Strategy page, tariff specialist | Event-driven |
 
 **Design note:** `news_events` consolidates V15's separate tables (`econ_news`, `policy_news`, `cbp_trade`, `aei_trade`, `farmdoc_rins`, `fas_news`, `esmis_publications`, `biofuel_policy`) into a single table with a `source` column and `specialist_tags[]` array. This is cleaner — one table to query for the sentiment page, filterable by source or tag.
 
@@ -240,17 +239,17 @@
 
 | Table | Purpose | Writer | Reader | Granularity |
 |-------|---------|--------|--------|-------------|
-| `usda_exports_1w` | Country-level export sales (soybeans, oil, meal) | Vercel Cron: usda-exports | China specialist, tariff specialist | Weekly |
-| `usda_wasde_1m` | WASDE crop forecasts | Vercel Cron: usda-wasde | Strategy page, supply context | Monthly |
-| `eia_biodiesel_1m` | Biodiesel production | Vercel Cron: eia-biodiesel | Biofuel specialist | Monthly |
-| `epa_rin_1d` | RIN credit prices | Vercel Cron: biofuel-policy | Biofuel specialist | Daily |
-| `lcfs_credits_1w` | Low Carbon Fuel Standard credits | Vercel Cron: biofuel-policy | Biofuel specialist | Weekly |
-| `conab_production_1m` | Brazil crop production | Vercel Cron: supply-monthly | China specialist, palm specialist | Monthly |
-| `china_imports_1m` | Chinese soy complex imports | Vercel Cron: supply-monthly | China specialist | Monthly |
-| `argentina_crush_1m` | Argentina crush margins | Vercel Cron: supply-monthly | Crush specialist | Monthly |
-| `mpob_palm_1m` | Malaysia palm production | Vercel Cron: supply-monthly | Palm specialist | Monthly |
-| `panama_canal_1d` | Canal transit data | Vercel Cron: panama-canal | Supply logistics context | Daily |
-| `fas_gats_1m` | Global trade flows | Vercel Cron: supply-monthly | Trade context | Monthly |
+| `usda_exports_1w` | Country-level export sales (soybeans, oil, meal) | pg_cron: usda-exports | China specialist, tariff specialist | Weekly |
+| `usda_wasde_1m` | WASDE crop forecasts | pg_cron: usda-wasde | Strategy page, supply context | Monthly |
+| `eia_biodiesel_1m` | Biodiesel production | pg_cron: eia-biodiesel | Biofuel specialist | Monthly |
+| `epa_rin_1d` | RIN credit prices | pg_cron: biofuel-policy | Biofuel specialist | Daily |
+| `lcfs_credits_1w` | Low Carbon Fuel Standard credits | pg_cron: biofuel-policy | Biofuel specialist | Weekly |
+| `conab_production_1m` | Brazil crop production | pg_cron: supply-monthly | China specialist, palm specialist | Monthly |
+| `china_imports_1m` | Chinese soy complex imports | pg_cron: supply-monthly | China specialist | Monthly |
+| `argentina_crush_1m` | Argentina crush margins | pg_cron: supply-monthly | Crush specialist | Monthly |
+| `mpob_palm_1m` | Malaysia palm production | pg_cron: supply-monthly | Palm specialist | Monthly |
+| `panama_canal_1d` | Canal transit data | pg_cron: panama-canal | Supply logistics context | Daily |
+| `fas_gats_1m` | Global trade flows | pg_cron: supply-monthly | Trade context | Monthly |
 
 **Dropped from V15:** `eia_biodiesel_1w` (0 rows, never worked), `uco_prices_1w` (0 rows). UCO/tallow tracked via FRED PPI proxies in `econ.commodities_1d`.
 
@@ -276,7 +275,7 @@
 | `model_registry` | Active model versions (absorbed from `model`) | Python: train_models | Python: forward inference | Per model |
 | `model_audit` | Model performance tracking (absorbed from `model`) | Python: evaluation scripts | Dashboard accuracy metrics | Per run |
 | `prediction_accuracy` | Realized vs predicted (absorbed from `model`) | Python: evaluation scripts | Dashboard accuracy metrics | Daily |
-| `board_crush_1d` | Soy crush margins (absorbed from `features`) | Vercel Cron: board-crush | Crush specialist | Daily |
+| `board_crush_1d` | Soy crush margins (absorbed from `features`) | pg_cron: board-crush | Crush specialist | Daily |
 
 ### Schema: `forecasts` (All Forecast Outputs)
 
@@ -300,13 +299,13 @@
 | `market_posture` | ACCUMULATE/WAIT/DEFER recommendation | Python: strategy engine | Strategy page | Daily |
 | `risk_metrics` | Portfolio risk summary | Python: risk calculation | Strategy page | Daily |
 | `dashboard_metrics` | Pre-computed dashboard numbers | pg_cron: materialized view refresh | Dashboard stat cards | Hourly |
-| `chart_overlays` | Pivot lines, support/resistance | Vercel Cron or pg_cron | Chart rendering | Daily |
+| `chart_overlays` | Pivot lines, support/resistance | pg_cron | Chart rendering | Daily |
 
 ### Schema: `ops` (Operational Health)
 
 | Table | Purpose | Writer | Reader | Granularity |
 |-------|---------|--------|--------|-------------|
-| `ingest_run` | Job execution log (replaces inngest_receipts) | Every Vercel Cron route | Freshness monitoring | Per run |
+| `ingest_run` | Job execution log (replaces inngest_receipts) | Every pg_cron function | Freshness monitoring | Per run |
 | `data_quality_log` | Data quality issues | Validation checks in writers | Alerting | Event-driven |
 | `pipeline_alerts` | Staleness/failure alerts | pg_cron: freshness check | Ops monitoring | Daily |
 | `source_registry` | Canonical list of all data sources + status | Manual / migration seed | Reference | Static |
@@ -319,7 +318,7 @@
 |-------|---------|--------|--------|-------------|
 | `restaurants` | Restaurant accounts | Manual / Glide sync | Vegas Intel page | Event-driven |
 | `casinos` | Casino properties | Manual | Vegas Intel page | Static |
-| `events` | Vegas events (CES, SEMA, March Madness) — **this is everything** | Manual / Vercel Cron | Vegas Intel page, event impact | Event-driven |
+| `events` | Vegas events (CES, SEMA, March Madness) — **this is everything** | Manual / pg_cron | Vegas Intel page, event impact | Event-driven |
 | `venues` | Event venue mapping | Manual | Vegas Intel page | Static |
 | `fryers` | Fryer equipment tracking | Manual / Glide sync | Vegas Intel page | Event-driven |
 | `customer_scores` | Restaurant scoring/priority | Derived | Vegas Intel page | Periodic |
@@ -339,46 +338,48 @@
 
 | Tier | Home | What Goes Here | Why |
 |------|------|----------------|-----|
-| **A** | **Vercel Cron -> API Route** | All ~80 light data ingestion crons | Simple: cron hits endpoint, endpoint fetches external API, writes to Supabase. No orchestrator needed. |
+| **A** | **pg_cron + http extension (inside Postgres)** | All ~25 data ingestion jobs | plpgsql functions call external APIs via `http_get`/`http_post`, parse JSON, upsert to tables. Triggered by pg_cron. No external orchestrator. |
 | **B** | **Supabase pg_cron** | DB-internal operations | Runs inside Postgres, zero network hops, SQL-native |
 | **C** | **Python workers (local/CI)** | Training pipeline, specialist signals, forecast generation, Monte Carlo, GARCH | Long-running compute, needs Python libs |
 | **D** | **Dedicated service** | ProFarmer scraper | Needs browser runtime |
 
-### Tier A: Vercel Cron -> API Route (~25 consolidated routes)
+### Tier A: pg_cron + http Extension (~25 plpgsql Functions)
 
-V15 had 104 fragmented Inngest functions. V16 consolidates to ~25 Vercel Cron routes.
+V15 had 104 fragmented Inngest functions. V16 consolidates to ~25 plpgsql functions triggered by pg_cron, running entirely inside Postgres via the `http` extension. No Vercel cron routes. No external orchestrator.
+
+**API keys** are stored in Supabase Vault and accessed via `current_setting()` inside plpgsql functions.
 
 **Consolidation map:**
 
-| V16 Route | Replaces (V15 Inngest) | Schedule | Target Schema |
-|-----------|----------------------|----------|---------------|
-| `/api/cron/zl-daily` | `zl-daily` | Daily 6:05 CT | mkt |
-| `/api/cron/zl-intraday` | `zl-1h`, `zl-15m`, `zl-1m-intraday-refresh` | Every 15m during session | mkt |
-| `/api/cron/databento-futures` | 5 futures shards + 5 statistics shards + `databento-futures-1h` + `futures-legacy-symbols-nightly` | Daily 2 AM CT | mkt |
-| `/api/cron/databento-options` | 5 options shards | Daily | mkt |
-| `/api/cron/fx-daily` | `databento-fx-daily`, `fx-spot-daily`, `fx-databento-spot-daily` | Daily | mkt |
-| `/api/cron/etf-daily` | `databento-etf-daily`, `databento-etf-vwap`, `yahoo-etf-fallback` | Daily 8 PM ET | mkt |
-| `/api/cron/indices-daily` | `yahooIndicesDaily` | Daily | mkt |
-| `/api/cron/fred` | 12 FRED functions (Fed, FX, Energy, Biofuel, Crush, Palm, Vol, Trump, China, General) | Every 8h | econ |
-| `/api/cron/cftc-weekly` | `cftcWeekly` | Friday 4 PM ET | mkt |
-| `/api/cron/usda-exports` | `usdaExportSalesWeekly` | Thursday | supply |
-| `/api/cron/usda-wasde` | `usdaWasdeMonthly` | Monthly | supply |
-| `/api/cron/eia-biodiesel` | `eiaBiodieselMonthly` | Monthly | supply |
-| `/api/cron/supply-monthly` | CONAB, Argentina, MPOB, China imports, FAS GATS (5 functions) | Monthly (staggered) | supply |
-| `/api/cron/panama-canal` | `panamaCanalDaily` | Daily | supply |
-| `/api/cron/weather` | NOAA + OpenMeteo + weather features (3 functions) | Daily | econ |
-| `/api/cron/legislation` | Federal Register + Congress bills + WhiteHouse + Fed speeches (4 functions) | Daily | alt |
-| `/api/cron/news` | Google News + CONAB news + FRED Blog + ESMIS (4 functions) | Daily | alt |
-| `/api/cron/trade-policy` | CBP + AEI + ICE (3 functions) | Daily | alt |
-| `/api/cron/biofuel-policy` | EPA RIN + FarmDoc + LCFS + biofuel RSS (4 functions) | Daily/Weekly | supply, alt |
-| `/api/cron/board-crush` | `boardCrushDaily` | Daily | training |
-| `/api/cron/palm-oil` | CPO + palm multi-source (3 functions) | Daily | mkt, econ |
-| `/api/cron/specialist-sync` | `specialistSignalsSync` | Daily | training |
-| `/api/cron/market-drivers` | Existing Vercel cron | Daily | analytics |
-| `/api/cron/freshness-check` | `freshnessMonitor` | Daily | ops |
-| `/api/cron/nyfed-daily` | `nyfedDaily` | Daily | econ |
+| V16 pg_cron Function | Replaces (V15 Inngest) | Schedule | Target Schema |
+|----------------------|----------------------|----------|---------------|
+| `ingest_zl_daily()` | `zl-daily` | Daily 6:05 CT | mkt |
+| `ingest_zl_intraday()` | `zl-1h`, `zl-15m`, `zl-1m-intraday-refresh` | Every 15m during session | mkt |
+| `ingest_databento_futures()` | 5 futures shards + 5 statistics shards + `databento-futures-1h` + `futures-legacy-symbols-nightly` | Daily 2 AM CT | mkt |
+| `ingest_databento_options()` | 5 options shards | Daily | mkt |
+| `ingest_fx_daily()` | `databento-fx-daily`, `fx-spot-daily`, `fx-databento-spot-daily` | Daily | mkt |
+| `ingest_etf_daily()` | `databento-etf-daily`, `databento-etf-vwap`, `yahoo-etf-fallback` | Daily 8 PM ET | mkt |
+| `ingest_indices_daily()` | `yahooIndicesDaily` | Daily | mkt |
+| `ingest_fred()` | 12 FRED functions (Fed, FX, Energy, Biofuel, Crush, Palm, Vol, Trump, China, General) | Every 8h | econ |
+| `ingest_cftc_weekly()` | `cftcWeekly` | Friday 4 PM ET | mkt |
+| `ingest_usda_exports()` | `usdaExportSalesWeekly` | Thursday | supply |
+| `ingest_usda_wasde()` | `usdaWasdeMonthly` | Monthly | supply |
+| `ingest_eia_biodiesel()` | `eiaBiodieselMonthly` | Monthly | supply |
+| `ingest_supply_monthly()` | CONAB, Argentina, MPOB, China imports, FAS GATS (5 functions) | Monthly (staggered) | supply |
+| `ingest_panama_canal()` | `panamaCanalDaily` | Daily | supply |
+| `ingest_weather()` | NOAA + OpenMeteo + weather features (3 functions) | Daily | econ |
+| `ingest_legislation()` | Federal Register + Congress bills + WhiteHouse + Fed speeches (4 functions) | Daily | alt |
+| `ingest_news()` | Google News + CONAB news + FRED Blog + ESMIS (4 functions) | Daily | alt |
+| `ingest_trade_policy()` | CBP + AEI + ICE (3 functions) | Daily | alt |
+| `ingest_biofuel_policy()` | EPA RIN + FarmDoc + LCFS + biofuel RSS (4 functions) | Daily/Weekly | supply, alt |
+| `ingest_board_crush()` | `boardCrushDaily` | Daily | training |
+| `ingest_palm_oil()` | CPO + palm multi-source (3 functions) | Daily | mkt, econ |
+| `ingest_specialist_sync()` | `specialistSignalsSync` | Daily | training |
+| `ingest_market_drivers()` | Existing market-drivers job | Daily | analytics |
+| `check_freshness()` | `freshnessMonitor` | Daily | ops |
+| `ingest_nyfed_daily()` | `nyfedDaily` | Daily | econ |
 
-**Vercel Cron limit:** 40 jobs on Pro plan. ~25 routes is well within limit.
+**No Vercel cron routes exist.** All ingestion is database-native.
 
 ### Tier B: Supabase pg_cron (~5 DB-internal jobs)
 
@@ -390,19 +391,22 @@ V15 had 104 fragmented Inngest functions. V16 consolidates to ~25 Vercel Cron ro
 | Latest price rollup | `INSERT INTO mkt.latest_price SELECT ... FROM mkt.price_1h ...` | Hourly |
 | Data freshness alert | SQL function checking max dates across critical tables | Daily |
 
-### Tier C: Python Workers (~8 scripts)
+### Tier C: Python Workers (~9 scripts)
 
-| Script | What It Does | Writes To | Trigger |
-|--------|-------------|-----------|---------|
-| `build_matrix.py` | Assemble feature matrix | training.matrix_1d | Manual / system cron |
-| `train_models.py` | AutoGluon training (4 horizons) | training.*, model artifacts | Manual (training gate) |
-| `generate_specialist_features.py` | 11 specialist feature generators | training.specialist_features_* | Manual / system cron |
-| `generate_specialist_signals.py` | Composite signal extraction | training.specialist_signals_1d | After features |
-| `generate_forward_forecasts.py` | Forward inference | forecasts.production_1d | After training |
-| `run_monte_carlo.py` | 10,000 MC runs per horizon | forecasts.monte_carlo_*, forecasts.probability_* | After forecasts |
-| `run_garch.py` | GJR-GARCH volatility | forecasts.garch_forecasts | After price data |
-| `generate_target_zones.py` | **NEW** — Pre-compute P30/P50/P70 serving data | forecasts.target_zones | After Monte Carlo |
-| `refresh_fred_api.py` | Full FRED history backfill (130+ series) | econ.* | Weekly system cron |
+Python writes intermediates to **LOCAL FILES** (parquet), not directly to cloud database tables. Only validated, promoted outputs go to cloud Supabase via `promote_to_cloud.py`.
+
+| Script | What It Does | Writes To (Local) | Promoted To (Cloud) | Trigger |
+|--------|-------------|-------------------|---------------------|---------|
+| `build_matrix.py` | Assemble feature matrix | `data/matrix_1d.parquet` | training.matrix_1d | Manual / system cron |
+| `train_models.py` | AutoGluon training (4 horizons) | `models/` artifacts + `data/training_*.parquet` | training.*, model_registry | Manual (training gate) |
+| `generate_specialist_features.py` | 11 specialist feature generators | `data/specialist_features_*.parquet` | training.specialist_features_* | Manual / system cron |
+| `generate_specialist_signals.py` | Composite signal extraction | `data/specialist_signals.parquet` | training.specialist_signals_1d | After features |
+| `generate_forward_forecasts.py` | Forward inference | `data/forecasts_production.parquet` | forecasts.production_1d | After training |
+| `run_monte_carlo.py` | 10,000 MC runs per horizon | `data/monte_carlo_*.parquet` | forecasts.monte_carlo_*, forecasts.probability_* | After forecasts |
+| `run_garch.py` | GJR-GARCH volatility | `data/garch_forecasts.parquet` | forecasts.garch_forecasts | After price data |
+| `generate_target_zones.py` | **NEW** — Pre-compute P30/P50/P70 serving data | `data/target_zones.parquet` | forecasts.target_zones | After Monte Carlo |
+| `promote_to_cloud.py` | **NEW** — Push validated local outputs to cloud Supabase | N/A (reads local parquet) | All promoted tables | After validation gate |
+| `refresh_fred_api.py` | Full FRED history backfill (130+ series) | Writes directly to cloud (bulk historical) | econ.* | Weekly system cron |
 
 ### Tier D: ProFarmer — Special Handling
 
@@ -418,15 +422,11 @@ ProFarmer is $500/month and mandatory. Requires a headless browser.
 | Browser | System Chrome via `resolveChromePath()` | Playwright-managed Chromium |
 | Complexity | 23 serverExternalPackages, healing scripts | Single Python script, no Docker |
 
-### Cron Auth Pattern
+### Ingestion Auth Pattern
 
-Every `/api/cron/*` route verifies a `CRON_SECRET` header:
+pg_cron functions run **inside Postgres** as the `postgres` role — no external HTTP auth needed. No CRON_SECRET. No Vercel cron routes to protect.
 
-```
-Vercel injects CRON_SECRET -> route checks Authorization header -> rejects unauthorized calls
-```
-
-This replaces Inngest's signing key mechanism. Simple, proven, no orchestrator dependency.
+API keys for external data sources (Databento, FRED, etc.) are stored in **Supabase Vault** and accessed inside plpgsql functions via `current_setting('app.databento_api_key')` etc. Keys never leave the database boundary.
 
 ---
 
@@ -451,9 +451,9 @@ This replaces Inngest's signing key mechanism. Simple, proven, no orchestrator d
 | `/api/vegas/intel` | Restaurants, events, impact, customer data | vegas.* |
 | `/api/health` | DB connectivity + data freshness check | ops.ingest_run |
 
-### Cron Routes (~25 routes)
+### Data Ingestion (pg_cron — NOT Vercel routes)
 
-All under `/api/cron/*`, protected by `CRON_SECRET` header. See Section 5 Tier A for full list.
+All data ingestion runs as pg_cron + http plpgsql functions inside Supabase. No Vercel cron routes exist. See Section 5 Tier A for full list of ~25 pg_cron functions.
 
 ### Auth Routes
 
@@ -509,9 +509,8 @@ Browser -> /api/zl/price-1d -> middleware checks Supabase session cookie
   -> if valid: query with supabase client (respects RLS)
   -> if not: 401
 
-Vercel Cron -> /api/cron/fred -> checks CRON_SECRET header
-  -> if valid: query with service_role client (bypasses RLS)
-  -> if not: 401
+pg_cron -> ingest_fred() plpgsql function -> runs inside Postgres as postgres role
+  -> no external auth needed, accesses API keys via Supabase Vault
 ```
 
 ### Environment Variables
@@ -523,9 +522,9 @@ Vercel Cron -> /api/cron/fred -> checks CRON_SECRET header
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase integration | Server-side routes, cron |
 | `DATABASE_URL` | Supabase integration | Python pipeline (psycopg2 direct, port 5432) |
 | `DATABASE_POOLER_URL` | Supabase integration | Python short reads (port 6543) |
-| `CRON_SECRET` | Vercel env settings | Cron route protection |
-| `DATABENTO_API_KEY` | Vercel env settings | Market data ingestion |
-| `FRED_API_KEY` | Vercel env settings | FRED ingestion |
+| _(API keys in Vault)_ | Supabase Vault | pg_cron ingestion functions access via `current_setting()` |
+| `DATABENTO_API_KEY` | Supabase Vault | pg_cron ingestion functions (accessed via `current_setting()`) |
+| `FRED_API_KEY` | Supabase Vault | pg_cron ingestion functions (accessed via `current_setting()`) |
 | `PROFARMER_*` | Local env only | ProFarmer scraper (never on Vercel) |
 
 ### Security Rules
@@ -544,7 +543,7 @@ Vercel Cron -> /api/cron/fred -> checks CRON_SECRET header
 ### Pipeline Phases
 
 ```
-Phase 1: Data Ingestion     <-- Vercel Cron handles this (not Python)
+Phase 1: Data Ingestion     <-- pg_cron + http extension handles this (not Python)
 Phase 2: Feature Assembly    <-- build_matrix.py
 Phase 3: Specialist Features <-- generate_specialist_features.py
 Phase 4: Specialist Signals  <-- generate_specialist_signals.py
@@ -645,15 +644,15 @@ Env vars:
 
 ## 9. Frontend Wireframe
 
-### Shell: Chanui Dashboard Template
+### Shell: shadcn/ui + Radix + Tailwind CSS
 
-Chanui provides the authenticated dashboard shell — sidebar nav, header bar, content area, responsive layout. V16 installs it fully and customizes with ZINC Fusion brand tokens.
+shadcn/ui provides the component primitives. V16 builds the dashboard shell from scratch — sidebar nav, header bar, content area, responsive layout — using shadcn/ui components with ZINC Fusion brand tokens.
 
 ### Page Map (6 pages)
 
 ```
-/                   -> Landing page (CLONE from V15)
-/dashboard          -> Main dashboard (CLONE chart + cards, Chanui shell)
+/                   -> Landing page (rewrite from scratch, V15 visual reference)
+/dashboard          -> Main dashboard (rewrite chart + cards from scratch, shadcn/ui shell)
 /strategy           -> Strategy posture (keep content, redesign layout)
 /legislation        -> Legislation tracking (clean rebuild)
 /sentiment          -> News + CoT (keep first 3-4 rows)
@@ -662,7 +661,7 @@ Chanui provides the authenticated dashboard shell — sidebar nav, header bar, c
 
 ### Landing Page (`/`)
 
-**Directive: CLONE.** The V15 landing page design is specific and intentional. V16 reproduces it faithfully inside the Chanui template's public (non-authenticated) shell.
+**Directive: REWRITE FROM SCRATCH using V15 as visual reference only — ZERO code copied.** The V15 landing page design is specific and intentional. V16 reproduces it faithfully inside the shadcn/ui public (non-authenticated) shell. ZERO mock data.
 
 **Elements to preserve exactly:**
 - Hero composition with headline + proof + CTA
@@ -695,11 +694,11 @@ Chanui provides the authenticated dashboard shell — sidebar nav, header bar, c
 
 ### Dashboard (`/dashboard`)
 
-**Directive: CLONE chart, keep cards.**
+**Directive: REWRITE chart from scratch using V15 as visual reference — ZERO code copied, ZERO mock data. Keep cards.**
 
 | Zone | Content | Notes |
 |------|---------|-------|
-| **Chart area** | LightweightZlCandlestickChart — cloned exactly. ForecastTargetsPrimitive for Target Zones. PivotLinesPrimitive for pivots. Watermark. All settings preserved. | **Do not modify chart settings. They were hard-won.** |
+| **Chart area** | LightweightZlCandlestickChart — rewritten from scratch using V15 as visual reference (ZERO code copied). ForecastTargetsPrimitive for Target Zones. PivotLinesPrimitive for pivots. Watermark. All settings preserved. | **Do not modify chart settings. They were hard-won.** |
 | **Status bar** | Live price, last update, regime chip, data freshness | mkt.latest_price, analytics.regime_state_1d |
 | **Cards row** | Dashboard stat cards — keep exactly as-is | analytics.dashboard_metrics |
 | **Drivers** | Top 4 drivers card (ChrisTop4Drivers) | analytics.driver_attribution_1d |
@@ -763,7 +762,7 @@ Clean rebuild. Feed of Federal Register rules, executive actions, congressional 
 
 ### Design Token Layer
 
-V16 tokens for Chanui customization:
+V16 tokens for shadcn/ui customization:
 
 - Colors (brand palette from V15 logo)
 - Spacing
@@ -785,7 +784,7 @@ V16 tokens for Chanui customization:
 | Check | Evidence Required |
 |-------|-------------------|
 | Supabase project created and reachable | `supabase status` returns healthy |
-| Local Supabase starts cleanly | `supabase start` succeeds, all services green |
+| Cloud Supabase reachable from local machine | `psql` connection test succeeds against cloud Supabase |
 | Vercel <> Supabase integration active | Env vars auto-populated in Vercel project settings |
 | `vercel env pull` works in V16 repo | `.env.local` generated with correct Supabase keys |
 | DB health route responds | `GET /api/health` returns `{ ok: true }` from local and preview |
@@ -811,8 +810,8 @@ V16 tokens for Chanui customization:
 
 | Check | Evidence Required |
 |-------|-------------------|
-| `CRON_SECRET` set in Vercel env | Vercel dashboard confirms |
-| Every `/api/cron/*` route checks `CRON_SECRET` | Code review of each route |
+| API keys stored in Supabase Vault | Vault entries confirmed for all external data sources |
+| All pg_cron ingestion functions use `current_setting()` for keys | Code review of each plpgsql function |
 | No `service_role` key in browser-accessible code | Grep for key in client components = 0 results |
 | `NEXT_PUBLIC_*` vars contain only anon key and URL | No secrets in public vars |
 | RLS policies block unauthenticated reads | Test: anon request without JWT -> rejected |
@@ -823,7 +822,7 @@ V16 tokens for Chanui customization:
 
 | Check | Evidence Required |
 |-------|-------------------|
-| Each Vercel Cron route writes expected rows | Manual trigger -> DB row count increases |
+| Each pg_cron ingestion function writes expected rows | Manual trigger -> DB row count increases |
 | Each API read route returns expected shape | Sample response matches contract |
 | Chart renders with real data from Supabase | Visual inspection on preview deploy |
 | Target Zones render on chart | ForecastTargetsPrimitive draws P30/P50/P70 lines |
@@ -869,15 +868,15 @@ Each phase has entry criteria, deliverables, and exit criteria. No phase starts 
 | 0.1 | Create Supabase project (Pro plan) | Dashboard accessible, connection string works |
 | 0.2 | Create Vercel project `zinc-fusion-v16` | `vercel ls` shows project |
 | 0.3 | Install Supabase <> Vercel integration | Env vars auto-populated |
-| 0.4 | Init Next.js app with Chanui dashboard template | `npm run dev` renders template |
+| 0.4 | Init Next.js app with shadcn/ui + Radix + Tailwind CSS | `npm run dev` renders shell |
 | 0.5 | Install shadcn/ui component library | `npx shadcn-ui init` succeeds |
-| 0.6 | Set up local Supabase (`supabase init` + `supabase start`) | Local stack healthy |
-| 0.7 | Create `/api/health` route | Returns `{ ok: true }` from local + preview |
+| 0.6 | Enable `http` and `pg_cron` extensions on cloud Supabase | Extensions visible in Supabase dashboard, test `http_get` works |
+| 0.7 | Create `/api/health` route | Returns `{ ok: true }` from preview |
 | 0.8 | Verify Python psycopg2 connects to cloud Supabase | Connection test passes |
 | 0.9 | Copy brand assets (logo, watermark, icons) into `public/` | Assets render on preview |
 | 0.10 | Set up `uv` Python environment with clean `pyproject.toml` | `uv sync` succeeds |
 
-**Exit criteria:** Health route live on preview, Python connects to cloud, brand assets visible, Chanui shell renders.
+**Exit criteria:** Health route live on preview, Python connects to cloud, brand assets visible, shadcn/ui shell renders, pg_cron + http extensions enabled on cloud Supabase.
 
 ### Phase 1: Schema & Seed
 
@@ -903,6 +902,29 @@ Each phase has entry criteria, deliverables, and exit criteria. No phase starts 
 
 **Exit criteria:** All tables exist, RLS active, indexes created, Gate 2 passes.
 
+### Phase 1.5: Page Rewrites
+
+**Entry:** Phase 1 complete. All schemas and tables exist.
+
+All 6 pages are rewritten from scratch using V15 as **VISUAL reference only**. ZERO code copied from V15. ZERO mock data — pages render in empty state until data is wired in later phases.
+
+| Step | Action | Exit Evidence |
+|------|--------|---------------|
+| 1.5.1 | Rewrite Landing page from scratch (V15 is visual reference ONLY — no code copied) | Page renders in empty/placeholder state |
+| 1.5.2 | Rewrite Dashboard page from scratch (chart component, cards, status bar) | Page renders with empty state, no mock data |
+| 1.5.3 | Rewrite Strategy page from scratch | Page renders with empty state |
+| 1.5.4 | Rewrite Legislation page from scratch | Page renders with empty state |
+| 1.5.5 | Rewrite Sentiment page from scratch | Page renders with empty state |
+| 1.5.6 | Rewrite Vegas Intel page from scratch | Page renders with empty state |
+
+**Rules:**
+- ZERO code copied from V15 — every line written fresh
+- ZERO mock data — components show empty/loading states
+- V15 is studied for visual design and UX patterns only
+- Data wiring happens in Phase 2 (chart), Phase 7 (dashboard), Phase 8 (secondary pages)
+
+**Exit criteria:** All 6 pages render cleanly in empty state. No V15 code present. No mock data.
+
 ### Phase 2: Read Path — Chart & Live Price
 
 **Entry:** Phase 1 complete. This is the most critical phase — if the chart doesn't work, nothing else matters.
@@ -911,13 +933,13 @@ Each phase has entry criteria, deliverables, and exit criteria. No phase starts 
 |------|--------|---------------|
 | 2.1 | Seed `mkt.price_1d` with V15 historical data (manual export/import) | 2+ years of ZL daily bars in Supabase |
 | 2.2 | Build `/api/zl/price-1d` read route | Returns OHLCV JSON matching V15 format |
-| 2.3 | Clone LightweightZlCandlestickChart into V16 | Chart renders with real data from Supabase |
-| 2.4 | Clone ForecastTargetsPrimitive | Target Zone lines render (placeholder data OK) |
-| 2.5 | Clone PivotLinesPrimitive | Pivot lines render |
-| 2.6 | Clone chart watermark | Watermark visible |
+| 2.3 | Rewrite LightweightZlCandlestickChart from scratch (V15 visual reference, ZERO code copied) | Chart renders with real data from Supabase |
+| 2.4 | Rewrite ForecastTargetsPrimitive from scratch | Target Zone lines render (placeholder data OK) |
+| 2.5 | Rewrite PivotLinesPrimitive from scratch | Pivot lines render |
+| 2.6 | Rewrite chart watermark from scratch | Watermark visible |
 | 2.7 | Build `/api/zl/live` read route | Returns latest price |
-| 2.8 | Clone useZlLivePrice hook | Status bar shows live price |
-| 2.9 | Clone dashboard cards (exact copy) | Cards render with placeholder/seeded data |
+| 2.8 | Rewrite useZlLivePrice hook from scratch | Status bar shows live price |
+| 2.9 | Rewrite dashboard cards from scratch (V15 visual reference, ZERO code copied, ZERO mock data) | Cards render with placeholder/seeded data |
 | 2.10 | Build `/api/zl/price-1h` route | Hourly data serves correctly |
 | 2.11 | Parity check: V15 chart vs V16 chart side-by-side | Visually identical |
 
@@ -929,56 +951,62 @@ Each phase has entry criteria, deliverables, and exit criteria. No phase starts 
 
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
-| 3.1 | Clone V15 landing page design into Chanui public shell | Landing page renders |
-| 3.2 | Preserve hero composition, typography, spacing | Visual match to V15 |
-| 3.3 | Preserve NeuralSphere or equivalent premium visual | Animation renders |
-| 3.4 | Product module cards | Cards render with correct copy |
-| 3.5 | Trust/proof strip | Horizons, specialists, update SLA visible |
+| 3.1 | Rewrite V15 landing page design from scratch into shadcn/ui public shell (V15 is visual reference ONLY — ZERO code copied, ZERO mock data) | Landing page renders |
+| 3.2 | Rewrite hero composition, typography, spacing from scratch (V15 visual reference) | Visual match to V15 |
+| 3.3 | Rewrite NeuralSphere or equivalent premium visual from scratch | Animation renders |
+| 3.4 | Rewrite product module cards from scratch (ZERO mock data) | Cards render with correct copy |
+| 3.5 | Rewrite trust/proof strip from scratch | Horizons, specialists, update SLA visible |
 | 3.6 | Chart teaser section (can use the real chart component) | Chart preview renders |
 | 3.7 | CTA -> dashboard flow | Click-through works |
 | 3.8 | Logo in header | Brand identity correct |
 
 **Exit criteria:** Landing page is visually faithful to V15. CTA leads to dashboard.
 
-### Phase 4: Data Ingestion — Critical Cron Routes
+### Phase 4: Data Ingestion — Critical pg_cron Functions
 
 **Entry:** Phase 2 complete. Chart needs fresh data, not just seed data.
 
+All data ingestion is implemented as plpgsql functions using pg_cron + http extension inside Supabase. No Vercel cron routes. No vercel.json cron config. API keys stored in Supabase Vault.
+
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
-| 4.1 | Build `/api/cron/zl-daily` (ZL daily OHLCV from Databento) | New rows in mkt.price_1d after cron fires |
-| 4.2 | Build `/api/cron/zl-intraday` (1h + 15m from Databento) | Intraday bars populating |
-| 4.3 | Build `/api/cron/fred` (consolidated — all FRED series in one route) | econ.* tables updating |
-| 4.4 | Build `/api/cron/databento-futures` (consolidated — all futures + stats) | mkt.futures_1d updating |
-| 4.5 | Build `/api/cron/databento-options` (consolidated) | mkt.options_1d updating |
-| 4.6 | Build `/api/cron/fx-daily` | mkt.fx_1d updating |
-| 4.7 | Build `/api/cron/etf-daily` | mkt.etf_1d updating |
-| 4.8 | Build `/api/cron/cftc-weekly` | mkt.cftc_1w updating |
-| 4.9 | Set up `CRON_SECRET` and auth middleware for all cron routes | Unauthorized requests rejected |
-| 4.10 | Configure `vercel.json` cron schedules for steps 4.1-4.8 | Crons firing on schedule |
-| 4.11 | Build `/api/cron/freshness-check` | ops.pipeline_alerts populating |
+| 4.1 | Store API keys (Databento, FRED, etc.) in Supabase Vault | `current_setting('app.databento_api_key')` returns key inside plpgsql |
+| 4.2 | Build `ingest_zl_daily()` plpgsql function (ZL daily OHLCV via http extension) | New rows in mkt.price_1d after pg_cron fires |
+| 4.3 | Build `ingest_zl_intraday()` plpgsql function (1h + 15m via http extension) | Intraday bars populating |
+| 4.4 | Build `ingest_fred()` plpgsql function (consolidated — all FRED series) | econ.* tables updating |
+| 4.5 | Build `ingest_databento_futures()` plpgsql function (all futures + stats) | mkt.futures_1d updating |
+| 4.6 | Build `ingest_databento_options()` plpgsql function | mkt.options_1d updating |
+| 4.7 | Build `ingest_fx_daily()` plpgsql function | mkt.fx_1d updating |
+| 4.8 | Build `ingest_etf_daily()` plpgsql function | mkt.etf_1d updating |
+| 4.9 | Build `ingest_cftc_weekly()` plpgsql function | mkt.cftc_1w updating |
+| 4.10 | Register all pg_cron schedules for steps 4.2-4.9 | pg_cron jobs visible in Supabase dashboard, firing on schedule |
+| 4.11 | Build `check_freshness()` plpgsql function | ops.pipeline_alerts populating |
 
-**Exit criteria:** Chart shows today's data. Core market tables updating on schedule. Freshness monitoring active.
+**Exit criteria:** Chart shows today's data. Core market tables updating on schedule via pg_cron. Freshness monitoring active. No Vercel cron routes.
 
 ### Phase 5: Python Pipeline Rebuild
 
 **Entry:** Phase 4 complete (data flowing into Supabase).
 
+Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only validated outputs are promoted to cloud Supabase via `promote_to_cloud.py`. This prevents half-baked training artifacts from polluting the production database.
+
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
-| 5.1 | Rebuild `config.py` — frozen model zoo, schema constants, DB URLs | Config loads cleanly |
-| 5.2 | Rebuild `build_matrix.py` — reads from Supabase, assembles features | training.matrix_1d has rows with expected column count |
-| 5.3 | Rebuild specialist feature generators (all 11) | training.specialist_features_{bucket} populated |
-| 5.4 | Rebuild `generate_specialist_signals.py` | training.specialist_signals_1d has 33 signal columns |
-| 5.5 | Rebuild `train_models.py` — AutoGluon, 4 horizons, frozen zoo | Training completes, artifacts saved, training_runs logged |
-| 5.6 | Rebuild `generate_forward_forecasts.py` | forecasts.production_1d has predicted prices |
-| 5.7 | Rebuild `run_monte_carlo.py` — 10,000 runs | forecasts.monte_carlo_runs populated |
-| 5.8 | Rebuild `run_garch.py` | forecasts.garch_forecasts populated |
-| 5.9 | Build NEW `generate_target_zones.py` | forecasts.target_zones has P30/P50/P70 per horizon |
-| 5.10 | Rebuild `pipeline.py` runner (orchestrates all phases) | `python -m fusion.pipeline run --all` completes |
-| 5.11 | Run Gate 5 (Python Pipeline Verification) | All checks pass |
+| 5.1 | Rebuild `config.py` — frozen model zoo, schema constants, DB URLs, local output paths | Config loads cleanly |
+| 5.2 | Rebuild `build_matrix.py` — reads from cloud Supabase, writes `data/matrix_1d.parquet` locally | Local parquet has rows with expected column count |
+| 5.3 | Rebuild specialist feature generators (all 11) — writes `data/specialist_features_*.parquet` locally | Local parquet files populated for each bucket |
+| 5.4 | Rebuild `generate_specialist_signals.py` — writes `data/specialist_signals.parquet` locally | Local parquet has 33 signal columns |
+| 5.5 | Rebuild `train_models.py` — AutoGluon, 4 horizons, frozen zoo — writes artifacts + parquet locally | Training completes, artifacts saved locally, training_runs parquet logged |
+| 5.6 | Rebuild `generate_forward_forecasts.py` — writes `data/forecasts_production.parquet` locally | Local parquet has predicted prices per horizon |
+| 5.7 | Rebuild `run_monte_carlo.py` — 10,000 runs — writes `data/monte_carlo_*.parquet` locally | Local parquet files populated |
+| 5.8 | Rebuild `run_garch.py` — writes `data/garch_forecasts.parquet` locally | Local parquet populated |
+| 5.9 | Build NEW `generate_target_zones.py` — writes `data/target_zones.parquet` locally | Local parquet has P30/P50/P70 per horizon |
+| 5.10 | Build NEW `promote_to_cloud.py` — reads local parquet, validates, pushes to cloud Supabase | Promotion gate: validates row counts, schema match, null checks before writing to cloud |
+| 5.11 | Rebuild `pipeline.py` runner (orchestrates all phases including promotion) | `python -m fusion.pipeline run --all` completes end-to-end |
+| 5.12 | Run promotion gate — validate local outputs, promote to cloud | Cloud tables populated with validated data |
+| 5.13 | Run Gate 5 (Python Pipeline Verification) | All checks pass |
 
-**Exit criteria:** Full pipeline runs end-to-end against cloud Supabase. Target Zones appear on dashboard chart.
+**Exit criteria:** Full pipeline runs end-to-end. Intermediates stored locally as parquet. Promotion gate validates before cloud write. Target Zones appear on dashboard chart after promotion.
 
 ### Phase 6: Remaining Data Ingestion Crons
 
@@ -986,20 +1014,20 @@ Each phase has entry criteria, deliverables, and exit criteria. No phase starts 
 
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
-| 6.1 | Build `/api/cron/supply-monthly` (CONAB, Argentina, MPOB, China, FAS) | supply.* tables updating |
-| 6.2 | Build `/api/cron/usda-exports` + `/api/cron/usda-wasde` | supply.usda_* updating |
-| 6.3 | Build `/api/cron/eia-biodiesel` | supply.eia_biodiesel_1m updating |
-| 6.4 | Build `/api/cron/biofuel-policy` (EPA RIN, FarmDoc, LCFS, RSS) | supply + alt tables updating |
-| 6.5 | Build `/api/cron/legislation` (Federal Register, Congress, WhiteHouse, Fed speeches) | alt.* tables updating |
-| 6.6 | Build `/api/cron/news` (Google News, CONAB, FRED Blog, ESMIS) | alt.news_events updating |
-| 6.7 | Build `/api/cron/trade-policy` (CBP, AEI, ICE) | alt.* tables updating |
-| 6.8 | Build `/api/cron/weather` (NOAA, OpenMeteo, features) | econ.weather_1d updating |
-| 6.9 | Build `/api/cron/board-crush` | training.board_crush_1d updating |
-| 6.10 | Build `/api/cron/palm-oil` | mkt/econ palm tables updating |
-| 6.11 | Build `/api/cron/panama-canal` | supply.panama_canal_1d updating |
+| 6.1 | Build `ingest_supply_monthly()` plpgsql function (CONAB, Argentina, MPOB, China, FAS) | supply.* tables updating |
+| 6.2 | Build `ingest_usda_exports()` + `ingest_usda_wasde()` plpgsql functions | supply.usda_* updating |
+| 6.3 | Build `ingest_eia_biodiesel()` plpgsql function | supply.eia_biodiesel_1m updating |
+| 6.4 | Build `ingest_biofuel_policy()` plpgsql function (EPA RIN, FarmDoc, LCFS, RSS) | supply + alt tables updating |
+| 6.5 | Build `ingest_legislation()` plpgsql function (Federal Register, Congress, WhiteHouse, Fed speeches) | alt.* tables updating |
+| 6.6 | Build `ingest_news()` plpgsql function (Google News, CONAB, FRED Blog, ESMIS) | alt.news_events updating |
+| 6.7 | Build `ingest_trade_policy()` plpgsql function (CBP, AEI, ICE) | alt.* tables updating |
+| 6.8 | Build `ingest_weather()` plpgsql function (NOAA, OpenMeteo, features) | econ.weather_1d updating |
+| 6.9 | Build `ingest_board_crush()` plpgsql function | training.board_crush_1d updating |
+| 6.10 | Build `ingest_palm_oil()` plpgsql function | mkt/econ palm tables updating |
+| 6.11 | Build `ingest_panama_canal()` plpgsql function | supply.panama_canal_1d updating |
 | 6.12 | Build ProFarmer scraper (Python Playwright, system cron) | alt.profarmer_news populating |
 | 6.13 | Set up pg_cron jobs (retention, stale cleanup, materialized views, freshness) | pg_cron schedule visible in Supabase dashboard |
-| 6.14 | Configure all remaining vercel.json cron schedules | All crons firing |
+| 6.14 | Register all remaining pg_cron schedules | All pg_cron jobs visible and firing in Supabase dashboard |
 
 **Exit criteria:** All data sources feeding Supabase. ProFarmer scraping. pg_cron running DB maintenance.
 
@@ -1037,13 +1065,13 @@ Each phase has entry criteria, deliverables, and exit criteria. No phase starts 
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
 | 8.1 | Build `/api/sentiment/overview` route | Returns news + CoT data |
-| 8.2 | Rebuild Sentiment page — first 3-4 rows from V15 | Sentiment overview, news feed, CoT, narrative render |
+| 8.2 | Wire Sentiment page with real data — first 3-4 rows from V15 visual reference (ZERO code copied, ZERO mock data) | Sentiment overview, news feed, CoT, narrative render |
 | 8.3 | Build `/api/legislation/feed` route | Returns legislation + executive actions + congress bills |
-| 8.4 | Rebuild Legislation page | Feed renders with tags and relevance |
+| 8.4 | Wire Legislation page with real data (ZERO code copied from V15, ZERO mock data) | Feed renders with tags and relevance |
 | 8.5 | Build `/api/strategy/posture` route | Returns ACCUMULATE/WAIT/DEFER + rationale |
-| 8.6 | Rebuild Strategy page — keep content, redesign layout | Posture, calculator, waterfall, risk metrics render |
+| 8.6 | Wire Strategy page with real data — keep content, redesign layout (ZERO code copied from V15, ZERO mock data) | Posture, calculator, waterfall, risk metrics render |
 | 8.7 | Build `/api/vegas/intel` route | Returns events, restaurants, scores, customer data |
-| 8.8 | Rebuild Vegas Intel page — ALL content, better layout. Events = everything. Intel buttons + AI sales strategy + real customer API data + real oil usage = gold. | All elements render |
+| 8.8 | Wire Vegas Intel page with real data — ALL content, better layout. Events = everything. Intel buttons + AI sales strategy + real customer API data + real oil usage = gold. (ZERO code copied from V15, ZERO mock data) | All elements render |
 | 8.9 | Parity check: all pages vs V15 | Functionality matches or exceeds |
 
 **Exit criteria:** All 6 pages (Landing, Dashboard, Strategy, Legislation, Sentiment, Vegas Intel) operational.
@@ -1088,8 +1116,8 @@ Each phase has entry criteria, deliverables, and exit criteria. No phase starts 
 
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|------|-----------|--------|------------|
-| **R1** | Chart rendering breaks during clone | Medium | **Critical** | Clone exactly, do not refactor. Test on preview with real data before proceeding. |
-| **R2** | Vercel Cron 40-job limit hit | Low | High | 25 routes is well within limit. Monitor count. Consolidate aggressively. |
+| **R1** | Chart rendering breaks during rewrite | Medium | **Critical** | Rewrite from scratch using V15 as visual reference, do not refactor. Test on preview with real data before proceeding. |
+| **R2** | pg_cron complexity / http extension limitations | Low | High | Test each plpgsql ingestion function individually. Fall back to Edge Functions if http extension cannot handle a specific API. |
 | **R3** | Supabase connection pooler timeouts during Python training writes | Medium | High | Use direct connection (port 5432) for bulk writes, not pooler. Set `statement_timeout`. |
 | **R4** | ProFarmer scraper breaks in Playwright rebuild | Medium | High ($500/mo) | Build Playwright version early. Test against ProFarmer site. Keep V15 scraper as fallback. |
 | **R5** | Specialist feature generators produce different signals after rebuild | Medium | High | Validate V16 outputs against V15 outputs row-by-row before training. |
@@ -1097,8 +1125,8 @@ Each phase has entry criteria, deliverables, and exit criteria. No phase starts 
 | **R7** | FRED/Databento/USDA API changes between builds | Low | Medium | Use V15 as reference for API contracts. Check docs before building each cron. |
 | **R8** | Supabase RLS blocks legitimate reads | Medium | Medium | Test RLS policies explicitly in Gate 3. |
 | **R9** | Vegas Intel data sync breaks (Glide integration) | Low | Medium | Evaluate Glide sync separately. |
-| **R10** | Local vs cloud Supabase schema drift | Medium | Medium | Supabase CLI migrations as single source of truth. Never manual DDL. |
-| **R11** | Vercel Cron routes timeout (300s max on Pro) | Low | Medium | All routes are light. ProFarmer stays external. Monitor execution times. |
+| **R10** | Schema drift on cloud Supabase | Low | Medium | Supabase CLI migrations as single source of truth (`db push`, `db diff --linked`). Never manual DDL. No local Supabase to drift. |
+| **R11** | pg_cron function timeout or http extension response limits | Low | Medium | pg_cron runs inside Postgres with configurable timeout. http extension handles standard REST APIs. ProFarmer stays as external Python scraper. |
 | **R12** | Env variable mismatch between environments | Low | Low | Vercel <> Supabase integration. `vercel env pull` for local. No manual .env copying. |
 
 ---
@@ -1109,8 +1137,8 @@ Run these first — they reveal architectural problems fastest:
 
 1. **Can Python connect to cloud Supabase and write a row?** If this fails, the entire training pipeline design is blocked.
 2. **Does the chart render with seeded data from Supabase?** If this fails, the core product is broken.
-3. **Does a single Vercel Cron route fire, fetch data, and write to Supabase?** If this fails, the entire ingestion architecture is wrong.
-4. **Does Supabase Auth work with the Chanui template?** If this fails, the auth design needs rework.
+3. **Does a single pg_cron + http plpgsql function fire, fetch data, and write to a table?** If this fails, the entire ingestion architecture is wrong.
+4. **Does Supabase Auth work with the shadcn/ui shell?** If this fails, the auth design needs rework.
 5. **Can `build_matrix.py` read from Supabase and assemble features?** If this fails, the Python <> Supabase data flow needs debugging.
 
 ---
@@ -1144,14 +1172,14 @@ Supabase connectivity
 
 These V15 files serve as reference for what V16 must deliver. They are NOT copied — they are studied for contracts and behavior.
 
-### Chart (CLONE — most critical)
+### Chart (visual reference — most critical, rewrite from scratch)
 - [`frontend/src/components/LightweightZlCandlestickChart.tsx`](frontend/src/components/LightweightZlCandlestickChart.tsx)
 - [`frontend/src/lib/charts/ForecastTargetsPrimitive.ts`](frontend/src/lib/charts/ForecastTargetsPrimitive.ts)
 - [`frontend/src/lib/charts/PivotLinesPrimitive.ts`](frontend/src/lib/charts/PivotLinesPrimitive.ts)
 - [`frontend/src/lib/charts/pivots.ts`](frontend/src/lib/charts/pivots.ts)
 - [`frontend/src/hooks/useZlLivePrice.ts`](frontend/src/hooks/useZlLivePrice.ts)
 
-### Landing Page (CLONE)
+### Landing Page (visual reference — rewrite from scratch)
 - [`frontend/src/app/page.tsx`](frontend/src/app/page.tsx)
 - [`frontend/src/components/viz/NeuralSphere.tsx`](frontend/src/components/viz/NeuralSphere.tsx)
 
