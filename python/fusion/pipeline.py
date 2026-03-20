@@ -31,8 +31,8 @@ PIPELINE_ORDER = [
     "signals",
     "train",
     "forecast",
-    "monte-carlo",
     "garch",
+    "monte-carlo",
     "target-zones",
 ]
 
