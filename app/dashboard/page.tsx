@@ -1,14 +1,19 @@
-import { BackendShell } from "@/components/backend-shell"
-import { SectionCards } from "@/components/section-cards"
-import { ZlCandlestickChart } from "@/components/chart/ZlCandlestickChart"
+"use client"
 
-export default function Page() {
+import { BackendShell } from "@/components/backend-shell"
+import { ZlCandlestickChart } from "@/components/chart/ZlCandlestickChart"
+import { ChrisTop4Drivers } from "@/components/dashboard/ChrisTop4Drivers"
+
+export default function DashboardPage() {
   return (
-    <BackendShell title="Dashboard">
-      <SectionCards />
-      <div className="px-4 lg:px-6">
-        <ZlCandlestickChart height="70vh" />
+    <BackendShell>
+      {/* SECTION 1: HERO CHART */}
+      <div>
+        <ZlCandlestickChart height="80vh" />
       </div>
+
+      {/* SECTION 2: Market Risk Factors */}
+      <ChrisTop4Drivers />
     </BackendShell>
   )
 }
