@@ -12,7 +12,8 @@ import {
   type CandlestickData,
   type Time,
 } from "lightweight-charts";
-import type { ZlPriceBar } from "@/lib/contracts/api";
+import type { ZlPriceBar, TargetZone } from "@/lib/contracts/api";
+import { computeFibStructure } from "@/lib/chart/autofib";
 
 const CANDLE_THEME = {
   upColor: "#26C6DA",
@@ -51,10 +52,21 @@ function computeVolatility(bars: ZlPriceBar[]): string {
   return (Math.sqrt(variance) * Math.sqrt(252) * 100).toFixed(1) + "%";
 }
 
+/**
+ * Target Zone line colors by probability band.
+ */
+const ZONE_COLORS = {
+  p30: "rgba(239, 68, 68, 0.6)",
+  p50: "rgba(234, 179, 8, 0.7)",
+  p70: "rgba(34, 197, 94, 0.6)",
+} as const;
+
 export function ZlCandlestickChart({
   height = "70vh",
+  targetZones = [],
 }: {
   height?: string | number;
+  targetZones?: TargetZone[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -208,6 +220,53 @@ export function ZlCandlestickChart({
     series.setData(candleData);
     seriesRef.current = series;
 
+    // Target Zone lines — clean horizontal lines, minimal labels
+    for (const zone of targetZones) {
+      series.createPriceLine({
+        price: zone.p30,
+        color: ZONE_COLORS.p30,
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "",
+      });
+      series.createPriceLine({
+        price: zone.p50,
+        color: ZONE_COLORS.p50,
+        lineWidth: 1,
+        lineStyle: 0,
+        axisLabelVisible: true,
+        title: "",
+      });
+      series.createPriceLine({
+        price: zone.p70,
+        color: ZONE_COLORS.p70,
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "",
+      });
+    }
+
+    // AutoFib structure lines — computed from OHLCV bars
+    const fibStruct = computeFibStructure(
+      bars.map((b) => b.high),
+      bars.map((b) => b.low),
+      bars.map((b) => b.close),
+    );
+    if (fibStruct) {
+      for (const level of fibStruct.levels) {
+        series.createPriceLine({
+          price: level.price,
+          color: level.color,
+          lineWidth: level.width as 1 | 2,
+          lineStyle: 0,
+          axisLabelVisible: false,
+          title: "",
+        });
+      }
+    }
+
     // Set initial visible range: last N bars + right padding
     if (!fitCalledRef.current && candleData.length > 0) {
       const total = candleData.length;
@@ -241,7 +300,7 @@ export function ZlCandlestickChart({
         /* disposed */
       }
     };
-  }, [bars]);
+  }, [bars, targetZones]);
 
   const changeColor = priceChange >= 0 ? "#26C6DA" : "#EC0000";
 

@@ -15,6 +15,8 @@ SPECIALISTS: Final[list[str]] = [
     "trump_effect",
 ]
 
+HORIZONS: Final[list[int]] = [30, 90, 180]  # 1m, 3m, 6m
+
 TARGET_TEMPLATE: Final[str] = "target_price_{h}d"
 
 

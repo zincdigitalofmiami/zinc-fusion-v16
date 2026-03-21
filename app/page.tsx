@@ -21,7 +21,7 @@ export default function HomePage() {
             </p>
             <div className="hero-stats">
               <div className="stat-item">
-                <div className="stat-number">4</div>
+                <div className="stat-number">3</div>
                 <div className="stat-label">Horizons</div>
               </div>
               <div className="stat-item">
@@ -238,6 +238,80 @@ export default function HomePage() {
                 </div>
                 <div className="metric">
                   <span className="metric-value">Low</span>
+                  <span className="metric-label">Signal</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="intel-card">
+              <div className="card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+              </div>
+              <h3 className="card-title">Tariff</h3>
+              <p className="card-description">
+                Trade policy, tariff deadlines, and import cost impact
+              </p>
+              <div className="card-metrics">
+                <div className="metric">
+                  <span className="metric-value">4-8%</span>
+                  <span className="metric-label">Weight</span>
+                </div>
+                <div className="metric">
+                  <span className="metric-value">Event</span>
+                  <span className="metric-label">Signal</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="intel-card">
+              <div className="card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                  <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                  <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                  <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                  <path d="M7 12h10" />
+                </svg>
+              </div>
+              <h3 className="card-title">Substitutes</h3>
+              <p className="card-description">
+                UCO, tallow, and alternative feedstock pricing
+              </p>
+              <div className="card-metrics">
+                <div className="metric">
+                  <span className="metric-value">3-6%</span>
+                  <span className="metric-label">Weight</span>
+                </div>
+                <div className="metric">
+                  <span className="metric-value">Medium</span>
+                  <span className="metric-label">Signal</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="intel-card">
+              <div className="card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M12 12v10" />
+                </svg>
+              </div>
+              <h3 className="card-title">Trump Effect</h3>
+              <p className="card-description">
+                Executive action impact on commodity and trade policy
+              </p>
+              <div className="card-metrics">
+                <div className="metric">
+                  <span className="metric-value">2-5%</span>
+                  <span className="metric-label">Weight</span>
+                </div>
+                <div className="metric">
+                  <span className="metric-value">Event</span>
                   <span className="metric-label">Signal</span>
                 </div>
               </div>

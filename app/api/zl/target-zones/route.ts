@@ -1,15 +1,61 @@
 import { NextResponse } from "next/server";
 
+import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 import type { ApiEnvelope, TargetZone } from "@/lib/contracts/api";
 
 export async function GET() {
-  const data: ApiEnvelope<TargetZone[]> = {
-    ok: true,
-    data: [],
-    asOf: new Date().toISOString(),
-    source: "forecasts.target_zones",
-    warning: "Scaffold response. Implement DB reader before production use.",
-  };
+  try {
+    const supabase = createSupabaseAdminClient();
 
-  return NextResponse.json(data);
+    // Get the latest target zones (most recent forecast_date, all horizons)
+    const { data: rows, error } = await supabase
+      .schema("forecasts")
+      .from("target_zones")
+      .select("horizon_days, p30, p50, p70, generated_at, forecast_date")
+      .order("forecast_date", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      return NextResponse.json(
+        { ok: false, data: [], asOf: new Date().toISOString(), error: error.message },
+        { status: 500 },
+      );
+    }
+
+    if (!rows || rows.length === 0) {
+      const envelope: ApiEnvelope<TargetZone[]> = {
+        ok: true,
+        data: [],
+        asOf: new Date().toISOString(),
+        source: "forecasts.target_zones",
+      };
+      return NextResponse.json(envelope);
+    }
+
+    // Get the latest forecast_date and filter to only that date's zones
+    const latestDate = rows[0].forecast_date;
+    const latestZones = rows.filter((r) => r.forecast_date === latestDate);
+
+    const zones: TargetZone[] = latestZones.map((row) => ({
+      horizonDays: row.horizon_days,
+      p30: Number(row.p30),
+      p50: Number(row.p50),
+      p70: Number(row.p70),
+      generatedAt: row.generated_at,
+    }));
+
+    const envelope: ApiEnvelope<TargetZone[]> = {
+      ok: true,
+      data: zones,
+      asOf: new Date().toISOString(),
+      source: "forecasts.target_zones",
+    };
+
+    return NextResponse.json(envelope);
+  } catch (err) {
+    return NextResponse.json(
+      { ok: false, data: [], asOf: new Date().toISOString(), error: String(err) },
+      { status: 500 },
+    );
+  }
 }
