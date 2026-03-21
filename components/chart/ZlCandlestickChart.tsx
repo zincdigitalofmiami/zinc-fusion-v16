@@ -14,7 +14,8 @@ import {
 } from "lightweight-charts";
 import type { ZlPriceBar, TargetZone } from "@/lib/contracts/api";
 import { calculateFibonacciMultiPeriod, type CandleData, type FibResult } from "@/lib/chart/autofib";
-import { FibLinesPrimitive } from "@/lib/chart/FibLinesPrimitive";
+import { PivotLinesPrimitive } from "@/lib/chart/PivotLinesPrimitive";
+import { ForecastTargetsPrimitive } from "@/lib/chart/ForecastTargetsPrimitive";
 
 const CANDLE_THEME = {
   upColor: "#26C6DA",
@@ -52,15 +53,6 @@ function computeVolatility(bars: ZlPriceBar[]): string {
     returns.reduce((a, b) => a + (b - mean) ** 2, 0) / returns.length;
   return (Math.sqrt(variance) * Math.sqrt(252) * 100).toFixed(1) + "%";
 }
-
-/**
- * Target Zone line colors by probability band.
- */
-const ZONE_COLORS = {
-  p30: "rgba(239, 68, 68, 0.6)",
-  p50: "rgba(234, 179, 8, 0.7)",
-  p70: "rgba(34, 197, 94, 0.6)",
-} as const;
 
 export function ZlCandlestickChart({
   height = "70vh",
@@ -221,36 +213,15 @@ export function ZlCandlestickChart({
 
     series.setData(candleData);
     seriesRef.current = series;
-    const fibPrimitive = new FibLinesPrimitive();
-    series.attachPrimitive(fibPrimitive);
+    const pivotPrimitive = new PivotLinesPrimitive();
+    const forecastTargetsPrimitive = new ForecastTargetsPrimitive();
+    series.attachPrimitive(pivotPrimitive);
+    series.attachPrimitive(forecastTargetsPrimitive);
 
-    // Target Zone lines — clean horizontal lines, minimal labels
-    for (const zone of targetZones) {
-      series.createPriceLine({
-        price: zone.p30,
-        color: ZONE_COLORS.p30,
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: "",
-      });
-      series.createPriceLine({
-        price: zone.p50,
-        color: ZONE_COLORS.p50,
-        lineWidth: 1,
-        lineStyle: 0,
-        axisLabelVisible: true,
-        title: "",
-      });
-      series.createPriceLine({
-        price: zone.p70,
-        color: ZONE_COLORS.p70,
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: "",
-      });
-    }
+    // Forecast target zones should be projected near the most recent bars, not full-width.
+    const targetStartIndex = Math.max(0, candleData.length - 16);
+    const targetStartTime = candleData[targetStartIndex]?.time;
+    forecastTargetsPrimitive.setTargetZones(targetZones, targetStartTime);
 
     // Fib rendering: anchored start, pivot zone fill, and structural-break lock.
     const fibCandles: CandleData[] = bars.map((b, idx) => ({
@@ -280,9 +251,9 @@ export function ZlCandlestickChart({
         fibResult.anchorLowBarIndex,
       );
       const anchorStartTime = candleData[anchorIdx]?.time;
-      fibPrimitive.setFibResult(fibResult, anchorStartTime);
+      pivotPrimitive.setFibResult(fibResult, anchorStartTime);
     } else {
-      fibPrimitive.setFibResult(null);
+      pivotPrimitive.setFibResult(null);
     }
 
     // Set initial visible range: last N bars + right padding
@@ -313,7 +284,8 @@ export function ZlCandlestickChart({
       disposed = true;
       observer.disconnect();
       try {
-        series.detachPrimitive(fibPrimitive);
+        series.detachPrimitive(forecastTargetsPrimitive);
+        series.detachPrimitive(pivotPrimitive);
         chart.remove();
       } catch {
         /* disposed */

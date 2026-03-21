@@ -6,10 +6,14 @@ import os
 import sys
 
 
+def resolve_db_url() -> str | None:
+    return os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
+
+
 def main() -> None:
-    db_url = os.getenv("SUPABASE_DB_URL")
+    db_url = resolve_db_url()
     if not db_url:
-        print("FAIL: SUPABASE_DB_URL not set in environment")
+        print("FAIL: DATABASE_URL (or SUPABASE_DB_URL) not set in environment")
         sys.exit(1)
 
     try:

@@ -5,21 +5,38 @@ Track execution evidence for each gate.
 ## Gate 1
 - Command outputs:
   - `scripts/verify/gate1.sh`
-  - `supabase CLI available`
-  - `.env.local not found` (expected in local scaffold mode)
+  - Tooling check passed: `node`, `npm`, `supabase`, `psql`, `python3`
+  - Vercel linkage check passed: `zinc-fusion-v16`
+  - Cloud schema check passed: `9` schemas visible
+  - `ops.source_registry` check passed: `6` rows
+  - `python/test_connection.py` passed:
+    - Basic connectivity
+    - All 9 schemas
+    - `ops.source_registry` read access
+    - write+rollback test against `ops.data_quality_log`
 - Date/time:
-  - 2026-03-18 (America/Chicago)
+  - 2026-03-20 (America/Chicago)
 - Result:
   - PASS
+- Verification note:
+  - Runtime `/api/health` check is enforced when `BASE_URL` is set; it was intentionally skipped in this run because `BASE_URL` was not exported.
 
 ## Gate 2
 - Command outputs:
   - `scripts/verify/gate2.sh`
-  - `supabase db reset`
-  - `supabase db push --dry-run --local`
-  - `psql` schema/table/policy assertions for `mkt,econ,alt,supply,training,forecasts,analytics,ops,vegas`
+  - Loaded `.env.local` and validated cloud database directly via `psql`
+  - Schema count = `9`
+  - Table count across 9 schemas = `80`
+  - Missing PK tables = `0`
+  - Missing `created_at` tables = `0`
+  - Missing `ingested_at` tables = `0`
+  - RLS disabled tables = `0`
+  - Tables without policies = `0`
+  - Required date/timestamp columns without indexes = `0`
+  - `ops.ingest_run` exists
+  - `ops.source_registry` rows = `6`
 - Date/time:
-  - 2026-03-18 (America/Chicago)
+  - 2026-03-20 (America/Chicago)
 - Result:
   - PASS
 

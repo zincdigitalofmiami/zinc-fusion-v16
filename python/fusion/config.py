@@ -27,11 +27,27 @@ class PipelineConfig:
     model_version: str
 
 
+def _first_non_empty(*values: str | None) -> str | None:
+    for value in values:
+        if value:
+            return value
+    return None
+
+
 def load_config() -> PipelineConfig:
     import os
 
     return PipelineConfig(
-        supabase_db_url=os.getenv("SUPABASE_DB_URL"),
-        supabase_pooler_url=os.getenv("SUPABASE_POOLER_URL"),
+        # DATABASE_URL is the canonical local/server DB contract for V16.
+        # SUPABASE_DB_URL remains a compatibility alias for existing scripts.
+        supabase_db_url=_first_non_empty(
+            os.getenv("DATABASE_URL"),
+            os.getenv("SUPABASE_DB_URL"),
+        ),
+        # Keep compatibility with environments that expose POSTGRES_URL.
+        supabase_pooler_url=_first_non_empty(
+            os.getenv("SUPABASE_POOLER_URL"),
+            os.getenv("POSTGRES_URL"),
+        ),
         model_version=os.getenv("MODEL_VERSION", "v16-scaffold"),
     )

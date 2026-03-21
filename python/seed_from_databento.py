@@ -3,7 +3,7 @@ Seed V16 mkt.price_1d from Databento historical API.
 
 Usage:
     export DATABENTO_API_KEY="db-..."
-    export SUPABASE_DB_URL="postgresql://..."
+    export DATABASE_URL="postgresql://..."
     python seed_from_databento.py
 
 Pulls 2+ years of ZL continuous front-month daily bars from Databento
@@ -22,13 +22,13 @@ from datetime import date, timedelta
 
 def main() -> None:
     api_key = os.getenv("DATABENTO_API_KEY")
-    db_url = os.getenv("SUPABASE_DB_URL")
+    db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
 
     if not api_key:
         print("FAIL: DATABENTO_API_KEY not set")
         sys.exit(1)
     if not db_url:
-        print("FAIL: SUPABASE_DB_URL not set")
+        print("FAIL: DATABASE_URL (or SUPABASE_DB_URL) not set")
         sys.exit(1)
 
     try:
