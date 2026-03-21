@@ -1,141 +1,190 @@
 /**
- * AutoFib Structure Engine
- * Translated from Pine Script v6 — ZINC Digital / Rabid Raccoon
+ * Auto-Fibonacci Engine — Multi-Period Confluence
  *
- * Multi-timeframe fibonacci confluence scoring.
- * Picks the best anchor from 5 lookback windows (8/13/21/34/55 bars),
- * determines bull/bear direction, and computes structure levels.
+ * Uses Fibonacci-sequence lookback periods (8, 13, 21, 34, 55 bars)
+ * to find the highest-confluence fib anchor.
+ *
+ * Scoring weights confluence count × range so wider anchors are
+ * preferred over narrow high-confluence short-period ones.
+ *
+ * Returns 10 levels: ZERO, .236, .382, Pivot, .618, .786, 1, T1, T2, T3
  */
 
-const FIB_PERIODS = [8, 13, 21, 34, 55] as const;
-const CONFLUENCE_TOL_PCT = 0.10;
-const CHECK_RATIOS = [0.382, 0.5, 0.618] as const;
-
-export interface FibLevel {
-  price: number;
-  color: string;
-  width: number;
-}
-
-export interface FibStructure {
-  levels: FibLevel[];
-  isBull: boolean;
-  anchorHigh: number;
-  anchorLow: number;
-  activePeriod: number;
-}
-
-// Colors
-const WHITE = "rgba(255, 255, 255, 1)";
-const GOLD = "rgba(218, 165, 32, 1)";
-const BURNT_ORANGE = "rgba(204, 85, 0, 0.8)";
-const BURNT_RED = "rgba(139, 0, 0, 0.8)";
-
-interface WindowRange {
+export interface CandleData {
+  time: number;
+  open: number;
   high: number;
   low: number;
-  period: number;
+  close: number;
+  volume?: number;
 }
 
-function getWindowRanges(
-  highs: number[],
-  lows: number[],
-): WindowRange[] {
-  const len = highs.length;
-  return FIB_PERIODS.map((period) => {
-    const start = Math.max(0, len - period);
+export interface FibLevel {
+  ratio: number;
+  price: number;
+  label: string;
+  color: string;
+  isExtension: boolean;
+}
+
+export interface FibResult {
+  levels: FibLevel[];
+  anchorHigh: number;
+  anchorLow: number;
+  isBullish: boolean;
+  anchorHighBarIndex: number;
+  anchorLowBarIndex: number;
+}
+
+const FIB_COLORS: Record<number, string> = {
+  0: "#FFFFFF",
+  0.236: "#808080",
+  0.382: "#808080",
+  0.5: "#FF9800",
+  0.618: "#808080",
+  0.786: "#808080",
+  1.0: "#FFFFFF",
+  1.236: "#4CAF50",
+  1.618: "#4CAF50",
+  2.0: "#4CAF50",
+};
+
+const FIB_RATIOS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
+const FIB_EXTENSIONS = [1.236, 1.618, 2.0];
+const FIB_LOOKBACKS = [8, 13, 21, 34, 55] as const;
+const CONFLUENCE_TOLERANCE = 0.001;
+const CONFLUENCE_RATIOS = [0.382, 0.5, 0.618];
+
+const FIB_LABELS: Record<number, string> = {
+  0: "ZERO",
+  0.236: ".236",
+  0.382: ".382",
+  0.5: "Pivot",
+  0.618: ".618",
+  0.786: ".786",
+  1.0: "1",
+  1.236: "TARGET 1",
+  1.618: "TARGET 2",
+  2.0: "TARGET 3",
+};
+
+function buildLevels(anchorHigh: number, anchorLow: number, isBullish: boolean): FibLevel[] {
+  const fibRange = anchorHigh - anchorLow;
+  const levels: FibLevel[] = [];
+
+  for (const ratio of FIB_RATIOS) {
+    const price = isBullish
+      ? anchorLow + fibRange * ratio
+      : anchorHigh - fibRange * ratio;
+    levels.push({
+      ratio,
+      price,
+      label: FIB_LABELS[ratio] || ratio.toString(),
+      color: FIB_COLORS[ratio] || "#787b86",
+      isExtension: false,
+    });
+  }
+
+  for (const ratio of FIB_EXTENSIONS) {
+    const price = isBullish
+      ? anchorLow + fibRange * ratio
+      : anchorHigh - fibRange * ratio;
+    levels.push({
+      ratio,
+      price,
+      label: FIB_LABELS[ratio] || ratio.toString(),
+      color: FIB_COLORS[ratio] || "#787b86",
+      isExtension: true,
+    });
+  }
+
+  return levels;
+}
+
+export function calculateFibonacciMultiPeriod(candles: CandleData[]): FibResult | null {
+  const n = candles.length;
+  if (n < FIB_LOOKBACKS[FIB_LOOKBACKS.length - 1]) {
+    return null;
+  }
+
+  type PeriodAnchor = {
+    period: number;
+    high: number;
+    low: number;
+    highBarIndex: number;
+    lowBarIndex: number;
+    range: number;
+    midLevels: number[];
+  };
+
+  const anchors: PeriodAnchor[] = [];
+
+  for (const period of FIB_LOOKBACKS) {
+    const startIdx = n - period;
+    if (startIdx < 0) continue;
+
     let high = -Infinity;
     let low = Infinity;
-    for (let i = start; i < len; i++) {
-      if (highs[i] > high) high = highs[i];
-      if (lows[i] < low) low = lows[i];
+    let highBarIndex = startIdx;
+    let lowBarIndex = startIdx;
+
+    for (let i = startIdx; i < n; i++) {
+      if (candles[i].high > high) {
+        high = candles[i].high;
+        highBarIndex = i;
+      }
+      if (candles[i].low < low) {
+        low = candles[i].low;
+        lowBarIndex = i;
+      }
     }
-    return { high, low, period };
-  });
-}
 
-function fibScore(
-  h: number,
-  l: number,
-  allWindows: WindowRange[],
-): number {
-  const rng = h - l;
-  if (rng <= 0) return 0;
-  const tol = rng * CONFLUENCE_TOL_PCT * 0.01;
-  let score = 0;
+    const range = high - low;
+    if (range <= 0) continue;
 
-  for (const selfRatio of CHECK_RATIOS) {
-    const selfLevel = l + rng * selfRatio;
-    for (const win of allWindows) {
-      const winRng = win.high - win.low;
-      if (winRng <= 0) continue;
-      for (const cmpRatio of CHECK_RATIOS) {
-        const cmpLevel = win.low + winRng * cmpRatio;
-        if (Math.abs(selfLevel - cmpLevel) <= tol) {
-          score += 1;
+    const midLevels = CONFLUENCE_RATIOS.map((r) => low + range * r);
+    anchors.push({ period, high, low, highBarIndex, lowBarIndex, range, midLevels });
+  }
+
+  if (anchors.length === 0) return null;
+
+  let bestAnchor = anchors[anchors.length - 1];
+  let bestScore = -1;
+
+  for (let a = 0; a < anchors.length; a++) {
+    const anchor = anchors[a];
+    const tolerance = anchor.range * CONFLUENCE_TOLERANCE;
+
+    let confluenceCount = 0;
+    for (let b = 0; b < anchors.length; b++) {
+      if (a === b) continue;
+      for (const levelA of anchor.midLevels) {
+        for (const levelB of anchors[b].midLevels) {
+          if (Math.abs(levelA - levelB) <= tolerance) {
+            confluenceCount++;
+          }
         }
       }
     }
-  }
-  return score;
-}
 
-/**
- * Compute AutoFib structure levels from OHLCV bars.
- * Returns null if insufficient data.
- */
-export function computeFibStructure(
-  highs: number[],
-  lows: number[],
-  closes: number[],
-): FibStructure | null {
-  if (highs.length < 8) return null;
-
-  const windows = getWindowRanges(highs, lows);
-
-  // Score each window for confluence
-  let bestScore = -1;
-  let bestIdx = 0;
-  for (let i = 0; i < windows.length; i++) {
-    const s = fibScore(windows[i].high, windows[i].low, windows);
-    if (s > bestScore) {
-      bestScore = s;
-      bestIdx = i;
+    const score = confluenceCount * anchor.range;
+    if (score > bestScore) {
+      bestScore = score;
+      bestAnchor = anchor;
     }
   }
 
-  const anchorHigh = windows[bestIdx].high;
-  const anchorLow = windows[bestIdx].low;
-  const activePeriod = windows[bestIdx].period;
-  const range = anchorHigh - anchorLow;
-
-  if (range <= 0) return null;
-
-  const midpoint = anchorLow + range * 0.5;
-  const lastClose = closes[closes.length - 1];
-  const isBull = lastClose >= midpoint;
-  const base = isBull ? anchorLow : anchorHigh;
-  const dir = isBull ? 1.0 : -1.0;
-
-  const fp = (ratio: number) => base + dir * range * ratio;
-
-  const levels: FibLevel[] = [
-    { price: fp(0),     color: WHITE,        width: 2 },  // Anchor Low
-    { price: fp(0.236), color: BURNT_RED,    width: 1 },  // Down Magnet 2
-    { price: fp(0.382), color: BURNT_RED,    width: 1 },  // Down Magnet 1
-    { price: fp(0.5),   color: WHITE,        width: 2 },  // Pivot
-    { price: fp(0.618), color: BURNT_ORANGE, width: 1 },  // Decision Zone Low
-    { price: fp(0.786), color: BURNT_ORANGE, width: 1 },  // Decision Zone High
-    { price: fp(1.0),   color: WHITE,        width: 2 },  // Anchor High
-    { price: fp(1.236), color: GOLD,         width: 2 },  // Target 1
-    { price: fp(1.618), color: GOLD,         width: 2 },  // Target 2
-  ];
+  const lastClose = candles[n - 1].close;
+  const midpoint = bestAnchor.low + bestAnchor.range * 0.5;
+  const isBullish = lastClose >= midpoint;
+  const levels = buildLevels(bestAnchor.high, bestAnchor.low, isBullish);
 
   return {
     levels,
-    isBull,
-    anchorHigh,
-    anchorLow,
-    activePeriod,
+    anchorHigh: bestAnchor.high,
+    anchorLow: bestAnchor.low,
+    isBullish,
+    anchorHighBarIndex: bestAnchor.highBarIndex,
+    anchorLowBarIndex: bestAnchor.lowBarIndex,
   };
 }

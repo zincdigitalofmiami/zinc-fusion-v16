@@ -14,8 +14,8 @@
 - **Python intermediates → local parquet files** — only validated outputs promoted to cloud
 - **shadcn/ui** — not "Chanui" (doesn't exist)
 - **ZERO mock data** — no placeholders, no temps, no synthetic data anywhere, ever
-- **ZERO code copying** — every V16 line written fresh, V15 is visual reference only
-- **All API keys from V15** — reuse existing, don't create new
+- **ZERO code copying** — every V16 line written fresh, legacy baseline is visual reference only
+- **All API keys from legacy baseline** — reuse existing, don't create new
 - **Design holdoff** — build clean structure now, aesthetics later
 - **ProFarmer** — Python Playwright on local machine, pg_cron coordinates/monitors
 
@@ -54,32 +54,32 @@ Required deliverable:
 
 ## Checkpoint 2: Page Rewrites — All 6 Pages
 
-Rewrite ALL 6 pages from scratch using V15 as VISUAL reference only.
+Rewrite ALL 6 pages from scratch using legacy baseline as VISUAL reference only.
 
 **HARD RULES:**
-- ZERO lines copied from V15
+- ZERO lines copied from legacy baseline
 - ZERO mock data — empty state components where data isn't wired yet
 - ZERO placeholder numbers, fake prices, sample arrays
-- Study V15 visually (screenshots, behavior), then write fresh V16 code
+- Study legacy baseline visually (screenshots, behavior), then write fresh V16 code
 - Each page uses shadcn/ui components + Tailwind CSS
 - Each page connects to its read API route (which returns empty arrays until data flows)
 
 **Pages to rewrite:**
 
-| Page | V15 Reference | V16 Approach |
+| Page | legacy baseline Reference | V16 Approach |
 |------|--------------|-------------|
-| `/` (Landing) | Already partially done — NeuralSphere, hero, stats | Complete the rewrite. Verify against V15 visual. |
+| `/` (Landing) | Already partially done — NeuralSphere, hero, stats | Complete the rewrite. Verify against legacy baseline visual. |
 | `/dashboard` | Chart + status bar + cards + drivers + regime | Rewrite chart component (lightweight-charts), status bar, card shells. Empty until data wired. |
 | `/strategy` | Posture + calculator + waterfall + risk | Rewrite page structure. Empty cards. Keep content goals, rethink layout. |
 | `/legislation` | Feed of regulations + executive actions | Clean rebuild. Feed component with filter UI. Empty until data flows. |
-| `/sentiment` | News feed + CoT + narrative | Rewrite first 3-4 rows from V15's design. Empty until data flows. |
+| `/sentiment` | News feed + CoT + narrative | Rewrite first 3-4 rows from legacy baseline's design. Empty until data flows. |
 | `/vegas-intel` | Events + restaurants + AI strategy | Stand up the IDEA only. Same API goals (Glide JSON). Layout TBD — don't finalize. |
 
 **Exit criteria:**
 - All 6 pages render in browser
 - All pages show empty state (not errors, not mock data)
 - All pages use shadcn/ui components
-- No V15 code exists in V16
+- No legacy baseline code exists in V16
 
 ---
 
@@ -185,7 +185,7 @@ Wire real data into all pages:
 
 **Exit criteria:**
 - All 6 pages show real data
-- V15/V16 visual parity check passes
+- legacy baseline/V16 visual parity check passes
 
 ---
 
@@ -194,7 +194,7 @@ Wire real data into all pages:
 - Supabase Auth for Chris/Kevin
 - Protected dashboard routes
 - Error tracking
-- V15/V16 parallel run
+- legacy baseline/V16 parallel run
 - Cutover
 
 ---

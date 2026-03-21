@@ -19,7 +19,7 @@
 |-------|------|--------|-----------|
 | **0** | Infrastructure Foundation | **COMPLETE** | All steps done except psycopg2 formal test |
 | **1** | Schema & Seed | **COMPLETE** | 80 tables, RLS, indexes (Gate 2 ~95%) |
-| **1.5** | Page Rewrites | **COMPLETE** | All 6 pages, zero mock data, zero V15 code |
+| **1.5** | Page Rewrites | **COMPLETE** | All 6 pages, zero mock data, zero legacy baseline code |
 | **2** | Read Path — Chart & Live Price | **NOT STARTED** | Critical path blocker |
 | **3** | Landing Page Completion | **PARTIALLY DONE** | Shell exists, missing 3 specialist cards + method section |
 | **4** | Data Ingestion — Critical pg_cron | **NOT STARTED** | Plan needs updating for CP4 consolidation |
@@ -97,7 +97,7 @@ These are not simple single-table reads. Phase 8 is the most complex wiring phas
 ### Phase 2: Chart + Live Price (CRITICAL PATH)
 
 **What must happen:**
-1. Export historical ZL data from V15 or pull from Databento API directly
+1. Export historical ZL data from legacy baseline or pull from Databento API directly
 2. Import into mkt.price_1d (manual seed — not pg_cron, just a one-time data load)
 3. Wire /api/zl/price-1d to query mkt.price_1d with `bucket_ts AS "tradeDate"` alias (CP5 finding)
 4. Rewrite LightweightZlCandlestickChart FROM SCRATCH (most complex single component)
@@ -105,7 +105,7 @@ These are not simple single-table reads. Phase 8 is the most complex wiring phas
 6. Wire /api/zl/live to query mkt.latest_price
 7. Rewrite useZlLivePrice hook
 
-**Risk:** The chart rewrite is the hardest single task. V15's chart has precise settings that must be studied (not copied) and reproduced. lightweight-charts library version, crosshair behavior, time scale, price scale — all must match.
+**Risk:** The chart rewrite is the hardest single task. legacy baseline's chart has precise settings that must be studied (not copied) and reproduced. lightweight-charts library version, crosshair behavior, time scale, price scale — all must match.
 
 **Dependency:** Nothing else makes sense without the chart working. Chris opens the dashboard to SEE the chart. Every other feature is secondary.
 

@@ -4,7 +4,7 @@
 
 **Date:** 2026-03-17
 **Status:** Approved design — ready for execution
-**Approach:** Audit-first blueprint — product requirements drive architecture, not V15 code
+**Approach:** Audit-first blueprint — product requirements drive architecture, not legacy baseline code
 
 ---
 
@@ -31,15 +31,15 @@
 
 ### What V16 Is
 
-- A from-scratch rebuild — **no code transferred from V15**
-- V15 stays live as reference and rollback during the entire build
-- V15 is a reference for *what the product does*, not a source of code to port
+- A from-scratch rebuild — **no code transferred from legacy baseline**
+- legacy baseline stays live as reference and rollback during the entire build
+- legacy baseline is a reference for *what the product does*, not a source of code to port
 - Purpose: eliminate all drift, errors, mismatches, legacy baggage, Inngest complexity
 
 ### What V16 Is Not
 
 - Not a migration-in-place
-- Not a refactor of V15
+- Not a refactor of legacy baseline
 - Not a copy-paste with cleanup
 - Not allowed to inherit: the old Prisma migration chain, copied `.vercel/` state, hand-copied `.env.local` habits, the Inngest estate, dead pages, dead jobs, or unclear contracts
 
@@ -50,8 +50,8 @@
 3. Every page must justify its data dependencies
 4. Every job must justify its existence
 5. Start from the screen, not the schema
-6. Rewrite the chart from scratch using V15 as visual reference — settings were hard-won, preserve behavior exactly
-7. Rewrite the landing page from scratch using V15 as visual reference — specific and intentional design to preserve
+6. Rewrite the chart from scratch using legacy baseline as visual reference — settings were hard-won, preserve behavior exactly
+7. Rewrite the landing page from scratch using legacy baseline as visual reference — specific and intentional design to preserve
 8. ProFarmer is mandatory ($500/month)
 9. 11 specialists — never 10. `trump_effect` is the 11th.
 10. Target = future price level. Target Zones = horizontal lines. Never cones, bands, or funnels.
@@ -72,8 +72,8 @@
 
 ### V16 Page Surface (6 pages — Quant dropped)
 
-1. **`/`** — Landing page (rewrite from scratch using V15 as visual reference — ZERO code copied, ZERO mock data)
-2. **`/dashboard`** — ZL candlestick chart (rewrite from scratch using V15 as visual reference) + Target Zones + live price + regime + drivers + cards
+1. **`/`** — Landing page (rewrite from scratch using legacy baseline as visual reference — ZERO code copied, ZERO mock data)
+2. **`/dashboard`** — ZL candlestick chart (rewrite from scratch using legacy baseline as visual reference) + Target Zones + live price + regime + drivers + cards
 3. **`/strategy`** — Posture recommendation, contract impact calculator, factor waterfall (keep content, redesign layout)
 4. **`/legislation`** — Federal Register / policy tracking (clean rebuild)
 5. **`/sentiment`** — News sentiment, CoT positioning, narrative (keep first 3-4 rows)
@@ -94,7 +94,7 @@
 | News/sentiment | Sentiment page | Daily |
 | Vegas operations | Vegas Intel page | Event-driven |
 
-### What Dies (V15 baggage that does NOT cross)
+### What Dies (legacy baseline baggage that does NOT cross)
 
 - 34 Prisma migrations
 - 104 Inngest functions (replaced by pg_cron + http extension + Python workers)
@@ -115,7 +115,7 @@
 
 ### Stack
 
-| Layer | V15 (current) | V16 (target) |
+| Layer | legacy baseline (current) | V16 (target) |
 |-------|---------------|--------------|
 | **Database** | Prisma Postgres (cloud) | Supabase Postgres |
 | **Schema mgmt** | Prisma + 34 migrations | Supabase migrations (SQL-first) |
@@ -227,13 +227,13 @@
 | `profarmer_news` | ProFarmer articles ($500/mo, mandatory) | Python Playwright scraper | Sentiment page, biofuel specialist | Daily |
 | `legislation_1d` | Federal Register regulations | pg_cron: legislation | Legislation page | Daily |
 | `executive_actions` | White House executive orders | pg_cron: legislation | Legislation page, tariff specialist | Daily |
-| `congress_bills` | Congressional bills (NEW — V15 had no table) | pg_cron: legislation | Legislation page | Daily |
-| `fed_speeches` | Fed speeches (NEW — V15 had no table) | pg_cron: legislation | Fed specialist | Daily |
+| `congress_bills` | Congressional bills (NEW — legacy baseline had no table) | pg_cron: legislation | Legislation page | Daily |
+| `fed_speeches` | Fed speeches (NEW — legacy baseline had no table) | pg_cron: legislation | Fed specialist | Daily |
 | `ice_enforcement` | ICE trade enforcement | pg_cron: trade-policy | Tariff specialist | Daily |
 | `news_events` | Aggregated news with `source` discriminator column (Google, CONAB, FRED Blog, ESMIS, CBP, AEI, FarmDoc, biofuel RSS) | pg_cron: news, trade-policy, biofuel-policy | Sentiment page | Daily |
 | `tariff_deadlines` | Upcoming tariff dates/actions | pg_cron: trade-policy | Strategy page, tariff specialist | Event-driven |
 
-**Design note:** `news_events` consolidates V15's separate tables (`econ_news`, `policy_news`, `cbp_trade`, `aei_trade`, `farmdoc_rins`, `fas_news`, `esmis_publications`, `biofuel_policy`) into a single table with a `source` column and `specialist_tags[]` array. This is cleaner — one table to query for the sentiment page, filterable by source or tag.
+**Design note:** `news_events` consolidates legacy baseline's separate tables (`econ_news`, `policy_news`, `cbp_trade`, `aei_trade`, `farmdoc_rins`, `fas_news`, `esmis_publications`, `biofuel_policy`) into a single table with a `source` column and `specialist_tags[]` array. This is cleaner — one table to query for the sentiment page, filterable by source or tag.
 
 ### Schema: `supply` (Physical Supply Chain)
 
@@ -251,7 +251,7 @@
 | `panama_canal_1d` | Canal transit data | pg_cron: panama-canal | Supply logistics context | Daily |
 | `fas_gats_1m` | Global trade flows | pg_cron: supply-monthly | Trade context | Monthly |
 
-**Dropped from V15:** `eia_biodiesel_1w` (0 rows, never worked), `uco_prices_1w` (0 rows). UCO/tallow tracked via FRED PPI proxies in `econ.commodities_1d`.
+**Dropped from legacy baseline:** `eia_biodiesel_1w` (0 rows, never worked), `uco_prices_1w` (0 rows). UCO/tallow tracked via FRED PPI proxies in `econ.commodities_1d`.
 
 ### Schema: `training` (Entire ML Lifecycle)
 
@@ -288,7 +288,7 @@
 | `target_zones` | **NEW** — Pre-computed P30/P50/P70 serving table | Python: generate_target_zones | Dashboard chart overlay (direct read) | Per forecast run |
 | `forecast_summary_1d` | Human-readable forecast summary | Python: post-processing | Strategy page, brief | Per run |
 
-**Key V16 change:** `target_zones` is a dedicated serving table. V15 derived Target Zones on-the-fly from scattered forecast tables. V16 pre-computes and serves them clean.
+**Key V16 change:** `target_zones` is a dedicated serving table. legacy baseline derived Target Zones on-the-fly from scattered forecast tables. V16 pre-computes and serves them clean.
 
 ### Schema: `analytics` (Dashboard Serving Layer)
 
@@ -310,7 +310,7 @@
 | `pipeline_alerts` | Staleness/failure alerts | pg_cron: freshness check | Ops monitoring | Daily |
 | `source_registry` | Canonical list of all data sources + status | Manual / migration seed | Reference | Static |
 
-**Dropped from V15:** `quarantined_record` (overbuilt), `data_quality_metrics` (overlaps with log), `inngest_receipts` (Inngest is dead), `ablation_results` (research artifact).
+**Dropped from legacy baseline:** `quarantined_record` (overbuilt), `data_quality_metrics` (overlaps with log), `inngest_receipts` (Inngest is dead), `ablation_results` (research artifact).
 
 ### Schema: `vegas` (Vegas Operations)
 
@@ -324,13 +324,13 @@
 | `customer_scores` | Restaurant scoring/priority | Derived | Vegas Intel page | Periodic |
 | `event_impact` | Event -> oil demand impact | Derived | Vegas Intel page | Event-driven |
 
-**Consolidated from V15's 17 tables.** V16 drops over-normalized structure (`shifts`, `shift_casinos`, `shift_restaurants`, `cuisine_affinity`, `cuisine_match`, `event_labels`, `event_entities`, `event_profiles`, `daily_spend`) and uses fewer tables with richer JSON columns where appropriate.
+**Consolidated from legacy baseline's 17 tables.** V16 drops over-normalized structure (`shifts`, `shift_casinos`, `shift_restaurants`, `cuisine_affinity`, `cuisine_match`, `event_labels`, `event_entities`, `event_profiles`, `daily_spend`) and uses fewer tables with richer JSON columns where appropriate.
 
 ---
 
 ## 5. Job Architecture — Replacing Inngest
 
-### The V15 Problem
+### The legacy baseline Problem
 
 104 Inngest functions running through a Docker Inngest dev container locally + Vercel serverless in production. Single point of orchestration failure, port conflicts (3000/8288), complex multi-layer healing scripts, serveHost drift incidents.
 
@@ -345,13 +345,13 @@
 
 ### Tier A: pg_cron + http Extension (~25 plpgsql Functions)
 
-V15 had 104 fragmented Inngest functions. V16 consolidates to ~25 plpgsql functions triggered by pg_cron, running entirely inside Postgres via the `http` extension. No Vercel cron routes. No external orchestrator.
+legacy baseline had 104 fragmented Inngest functions. V16 consolidates to ~25 plpgsql functions triggered by pg_cron, running entirely inside Postgres via the `http` extension. No Vercel cron routes. No external orchestrator.
 
 **API keys** are stored in Supabase Vault and accessed via `current_setting()` inside plpgsql functions.
 
 **Consolidation map:**
 
-| V16 pg_cron Function | Replaces (V15 Inngest) | Schedule | Target Schema |
+| V16 pg_cron Function | Replaces (legacy baseline Inngest) | Schedule | Target Schema |
 |----------------------|----------------------|----------|---------------|
 | `ingest_zl_daily()` | `zl-daily` | Daily 6:05 CT | mkt |
 | `ingest_zl_intraday()` | `zl-1h`, `zl-15m`, `zl-1m-intraday-refresh` | Every 15m during session | mkt |
@@ -414,7 +414,7 @@ ProFarmer is $500/month and mandatory. Requires a headless browser.
 
 **V16 approach:** Rebuild as a Python script using Playwright, triggered by system cron on the local/dev machine. Writes directly to cloud Supabase. Falls back to GitHub Actions scheduled workflow for redundancy if local machine is offline.
 
-| Aspect | V15 | V16 |
+| Aspect | legacy baseline | V16 |
 |--------|-----|-----|
 | Runtime | Puppeteer-extra (Node.js) via Docker Inngest | Playwright (Python) via system cron |
 | Hosting | Docker container on local machine | Direct Python script on local machine |
@@ -462,7 +462,7 @@ All data ingestion runs as pg_cron + http plpgsql functions inside Supabase. No 
 | `/api/auth/callback` | Supabase Auth callback |
 | `/api/auth/check` | Session validation |
 
-### Dropped from V15
+### Dropped from legacy baseline
 
 - `/api/zl/brief` — fold into forecast
 - `/api/zl/context` — fold into dashboard metrics
@@ -479,7 +479,7 @@ All data ingestion runs as pg_cron + http plpgsql functions inside Supabase. No 
 
 ## 7. Auth & Security Model
 
-### V15 Problem
+### legacy baseline Problem
 
 Custom cookie-based auth with unclear RLS enforcement. Service-role key used for all DB reads, bypassing Supabase RLS policies. No clear separation between public reads and admin writes.
 
@@ -554,9 +554,9 @@ Phase 8: GARCH               <-- run_garch.py
 Phase 9: Post-Processing     <-- generate_target_zones.py (NEW)
 ```
 
-### What Changes from V15
+### What Changes from legacy baseline
 
-| Aspect | V15 | V16 |
+| Aspect | legacy baseline | V16 |
 |--------|-----|-----|
 | **DB connection** | psycopg2 -> Prisma Postgres | psycopg2 -> Supabase Postgres (direct for writes, pooler for reads) |
 | **Config** | Scattered across modules | Single `config.py` with frozen model zoo, schema constants |
@@ -570,7 +570,7 @@ Phase 9: Post-Processing     <-- generate_target_zones.py (NEW)
 
 ### New Script: `generate_target_zones.py`
 
-V15 scattered Target Zone computation across API routes and Monte Carlo outputs. V16 has a dedicated post-processing step:
+legacy baseline scattered Target Zone computation across API routes and Monte Carlo outputs. V16 has a dedicated post-processing step:
 
 ```
 Reads:  forecasts.production_1d + forecasts.monte_carlo_runs + forecasts.garch_forecasts
@@ -609,7 +609,7 @@ Env vars:
   SUPABASE_POOLER_URL   = pooled connection
 ```
 
-### Training Gate (carried from V15 — still mandatory)
+### Training Gate (carried from legacy baseline — still mandatory)
 
 **NEVER start model training without explicit user approval.** The pipeline runner has a `--dry-run` flag. Training writes are gated behind a confirmation prompt.
 
@@ -651,7 +651,7 @@ shadcn/ui provides the component primitives. V16 builds the dashboard shell from
 ### Page Map (6 pages)
 
 ```
-/                   -> Landing page (rewrite from scratch, V15 visual reference)
+/                   -> Landing page (rewrite from scratch, legacy baseline visual reference)
 /dashboard          -> Main dashboard (rewrite chart + cards from scratch, shadcn/ui shell)
 /strategy           -> Strategy posture (keep content, redesign layout)
 /legislation        -> Legislation tracking (clean rebuild)
@@ -661,7 +661,7 @@ shadcn/ui provides the component primitives. V16 builds the dashboard shell from
 
 ### Landing Page (`/`)
 
-**Directive: REWRITE FROM SCRATCH using V15 as visual reference only — ZERO code copied.** The V15 landing page design is specific and intentional. V16 reproduces it faithfully inside the shadcn/ui public (non-authenticated) shell. ZERO mock data.
+**Directive: REWRITE FROM SCRATCH using legacy baseline as visual reference only — ZERO code copied.** The legacy baseline landing page design is specific and intentional. V16 reproduces it faithfully inside the shadcn/ui public (non-authenticated) shell. ZERO mock data.
 
 **Elements to preserve exactly:**
 - Hero composition with headline + proof + CTA
@@ -694,11 +694,11 @@ shadcn/ui provides the component primitives. V16 builds the dashboard shell from
 
 ### Dashboard (`/dashboard`)
 
-**Directive: REWRITE chart from scratch using V15 as visual reference — ZERO code copied, ZERO mock data. Keep cards.**
+**Directive: REWRITE chart from scratch using legacy baseline as visual reference — ZERO code copied, ZERO mock data. Keep cards.**
 
 | Zone | Content | Notes |
 |------|---------|-------|
-| **Chart area** | LightweightZlCandlestickChart — rewritten from scratch using V15 as visual reference (ZERO code copied). ForecastTargetsPrimitive for Target Zones. PivotLinesPrimitive for pivots. Watermark. All settings preserved. | **Do not modify chart settings. They were hard-won.** |
+| **Chart area** | LightweightZlCandlestickChart — rewritten from scratch using legacy baseline as visual reference (ZERO code copied). ForecastTargetsPrimitive for Target Zones. PivotLinesPrimitive for pivots. Watermark. All settings preserved. | **Do not modify chart settings. They were hard-won.** |
 | **Status bar** | Live price, last update, regime chip, data freshness | mkt.latest_price, analytics.regime_state_1d |
 | **Cards row** | Dashboard stat cards — keep exactly as-is | analytics.dashboard_metrics |
 | **Drivers** | Top 4 drivers card (ChrisTop4Drivers) | analytics.driver_attribution_1d |
@@ -718,7 +718,7 @@ These key elements need to be highlighted on the dashboard as cards. Not V16 lau
 
 ### Sentiment (`/sentiment`)
 
-**Directive: Keep first 3-4 rows from V15.**
+**Directive: Keep first 3-4 rows from legacy baseline.**
 
 | Row | Content | Status |
 |-----|---------|--------|
@@ -764,7 +764,7 @@ Clean rebuild. Feed of Federal Register rules, executive actions, congressional 
 
 V16 tokens for shadcn/ui customization:
 
-- Colors (brand palette from V15 logo)
+- Colors (brand palette from legacy baseline logo)
 - Spacing
 - Radii
 - Elevation
@@ -789,7 +789,7 @@ V16 tokens for shadcn/ui customization:
 | `vercel env pull` works in V16 repo | `.env.local` generated with correct Supabase keys |
 | DB health route responds | `GET /api/health` returns `{ ok: true }` from local and preview |
 | Direct psycopg2 connection from Python | Connection test passes against cloud Supabase |
-| V16 repo is NOT linked to V15 Vercel project | `vercel ls` shows only `zinc-fusion-v16` |
+| V16 repo is NOT linked to legacy baseline Vercel project | `vercel ls` shows only `zinc-fusion-v16` |
 
 ### Gate 2: Schema Integrity
 
@@ -842,11 +842,11 @@ V16 tokens for shadcn/ui customization:
 | `generate_target_zones.py` produces P30/P50/P70 | target_zones has rows |
 | Dashboard reads Target Zones correctly | Chart overlay matches Python output |
 
-### Gate 6: Parity Verification (V15 vs V16)
+### Gate 6: Parity Verification (legacy baseline vs V16)
 
 | Check | Evidence Required |
 |-------|-------------------|
-| `/api/zl/price-1d` — same OHLCV data | Diff V15 vs V16 responses |
+| `/api/zl/price-1d` — same OHLCV data | Diff legacy baseline vs V16 responses |
 | `/api/zl/live` — same latest price | Compare timestamps and values |
 | Target Zones — same P30/P50/P70 levels | Side-by-side chart comparison |
 | Dashboard cards — same metrics | Screenshot comparison |
@@ -906,11 +906,11 @@ Each phase has entry criteria, deliverables, and exit criteria. No phase starts 
 
 **Entry:** Phase 1 complete. All schemas and tables exist.
 
-All 6 pages are rewritten from scratch using V15 as **VISUAL reference only**. ZERO code copied from V15. ZERO mock data — pages render in empty state until data is wired in later phases.
+All 6 pages are rewritten from scratch using legacy baseline as **VISUAL reference only**. ZERO code copied from legacy baseline. ZERO mock data — pages render in empty state until data is wired in later phases.
 
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
-| 1.5.1 | Rewrite Landing page from scratch (V15 is visual reference ONLY — no code copied) | Page renders in empty/placeholder state |
+| 1.5.1 | Rewrite Landing page from scratch (legacy baseline is visual reference ONLY — no code copied) | Page renders in empty/placeholder state |
 | 1.5.2 | Rewrite Dashboard page from scratch (chart component, cards, status bar) | Page renders with empty state, no mock data |
 | 1.5.3 | Rewrite Strategy page from scratch | Page renders with empty state |
 | 1.5.4 | Rewrite Legislation page from scratch | Page renders with empty state |
@@ -918,12 +918,12 @@ All 6 pages are rewritten from scratch using V15 as **VISUAL reference only**. Z
 | 1.5.6 | Rewrite Vegas Intel page from scratch | Page renders with empty state |
 
 **Rules:**
-- ZERO code copied from V15 — every line written fresh
+- ZERO code copied from legacy baseline — every line written fresh
 - ZERO mock data — components show empty/loading states
-- V15 is studied for visual design and UX patterns only
+- legacy baseline is studied for visual design and UX patterns only
 - Data wiring happens in Phase 2 (chart), Phase 7 (dashboard), Phase 8 (secondary pages)
 
-**Exit criteria:** All 6 pages render cleanly in empty state. No V15 code present. No mock data.
+**Exit criteria:** All 6 pages render cleanly in empty state. No legacy baseline code present. No mock data.
 
 ### Phase 2: Read Path — Chart & Live Price
 
@@ -931,19 +931,19 @@ All 6 pages are rewritten from scratch using V15 as **VISUAL reference only**. Z
 
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
-| 2.1 | Seed `mkt.price_1d` with V15 historical data (manual export/import) | 2+ years of ZL daily bars in Supabase |
-| 2.2 | Build `/api/zl/price-1d` read route | Returns OHLCV JSON matching V15 format |
-| 2.3 | Rewrite LightweightZlCandlestickChart from scratch (V15 visual reference, ZERO code copied) | Chart renders with real data from Supabase |
+| 2.1 | Seed `mkt.price_1d` with legacy baseline historical data (manual export/import) | 2+ years of ZL daily bars in Supabase |
+| 2.2 | Build `/api/zl/price-1d` read route | Returns OHLCV JSON matching legacy baseline format |
+| 2.3 | Rewrite LightweightZlCandlestickChart from scratch (legacy baseline visual reference, ZERO code copied) | Chart renders with real data from Supabase |
 | 2.4 | Rewrite ForecastTargetsPrimitive from scratch | Target Zone lines render (placeholder data OK) |
 | 2.5 | Rewrite PivotLinesPrimitive from scratch | Pivot lines render |
 | 2.6 | Rewrite chart watermark from scratch | Watermark visible |
 | 2.7 | Build `/api/zl/live` read route | Returns latest price |
 | 2.8 | Rewrite useZlLivePrice hook from scratch | Status bar shows live price |
-| 2.9 | Rewrite dashboard cards from scratch (V15 visual reference, ZERO code copied, ZERO mock data) | Cards render with placeholder/seeded data |
+| 2.9 | Rewrite dashboard cards from scratch (legacy baseline visual reference, ZERO code copied, ZERO mock data) | Cards render with placeholder/seeded data |
 | 2.10 | Build `/api/zl/price-1h` route | Hourly data serves correctly |
-| 2.11 | Parity check: V15 chart vs V16 chart side-by-side | Visually identical |
+| 2.11 | Parity check: legacy baseline chart vs V16 chart side-by-side | Visually identical |
 
-**Exit criteria:** Chart renders identically to V15 with real historical data. Live price route works. Cards render.
+**Exit criteria:** Chart renders identically to legacy baseline with real historical data. Live price route works. Cards render.
 
 ### Phase 3: Landing Page
 
@@ -951,8 +951,8 @@ All 6 pages are rewritten from scratch using V15 as **VISUAL reference only**. Z
 
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
-| 3.1 | Rewrite V15 landing page design from scratch into shadcn/ui public shell (V15 is visual reference ONLY — ZERO code copied, ZERO mock data) | Landing page renders |
-| 3.2 | Rewrite hero composition, typography, spacing from scratch (V15 visual reference) | Visual match to V15 |
+| 3.1 | Rewrite legacy baseline landing page design from scratch into shadcn/ui public shell (legacy baseline is visual reference ONLY — ZERO code copied, ZERO mock data) | Landing page renders |
+| 3.2 | Rewrite hero composition, typography, spacing from scratch (legacy baseline visual reference) | Visual match to legacy baseline |
 | 3.3 | Rewrite NeuralSphere or equivalent premium visual from scratch | Animation renders |
 | 3.4 | Rewrite product module cards from scratch (ZERO mock data) | Cards render with correct copy |
 | 3.5 | Rewrite trust/proof strip from scratch | Horizons, specialists, update SLA visible |
@@ -960,7 +960,7 @@ All 6 pages are rewritten from scratch using V15 as **VISUAL reference only**. Z
 | 3.7 | CTA -> dashboard flow | Click-through works |
 | 3.8 | Logo in header | Brand identity correct |
 
-**Exit criteria:** Landing page is visually faithful to V15. CTA leads to dashboard.
+**Exit criteria:** Landing page is visually faithful to legacy baseline. CTA leads to dashboard.
 
 ### Phase 4: Data Ingestion — Critical pg_cron Functions
 
@@ -1045,7 +1045,7 @@ Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only vali
 | 7.6 | Wire regime chip + RegimeAnalysisChart | Regime renders |
 | 7.7 | Build `/api/dashboard/metrics` route | Returns dashboard stats |
 | 7.8 | Wire all dashboard cards with live data | Cards show real numbers |
-| 7.9 | Run Gate 6 (Parity Verification) for dashboard | V16 dashboard matches V15 |
+| 7.9 | Run Gate 6 (Parity Verification) for dashboard | V16 dashboard matches legacy baseline |
 
 **Specialist highlight cards (noted for future sprint):**
 - Weather risk card
@@ -1056,7 +1056,7 @@ Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only vali
 - UCO/tallow price card
 - Palm oil supply card
 
-**Exit criteria:** Dashboard fully functional with real data. Target Zones rendering. Cards live. Parity with V15 confirmed.
+**Exit criteria:** Dashboard fully functional with real data. Target Zones rendering. Cards live. Parity with legacy baseline confirmed.
 
 ### Phase 8: Secondary Pages
 
@@ -1065,14 +1065,14 @@ Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only vali
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
 | 8.1 | Build `/api/sentiment/overview` route | Returns news + CoT data |
-| 8.2 | Wire Sentiment page with real data — first 3-4 rows from V15 visual reference (ZERO code copied, ZERO mock data) | Sentiment overview, news feed, CoT, narrative render |
+| 8.2 | Wire Sentiment page with real data — first 3-4 rows from legacy baseline visual reference (ZERO code copied, ZERO mock data) | Sentiment overview, news feed, CoT, narrative render |
 | 8.3 | Build `/api/legislation/feed` route | Returns legislation + executive actions + congress bills |
-| 8.4 | Wire Legislation page with real data (ZERO code copied from V15, ZERO mock data) | Feed renders with tags and relevance |
+| 8.4 | Wire Legislation page with real data (ZERO code copied from legacy baseline, ZERO mock data) | Feed renders with tags and relevance |
 | 8.5 | Build `/api/strategy/posture` route | Returns ACCUMULATE/WAIT/DEFER + rationale |
-| 8.6 | Wire Strategy page with real data — keep content, redesign layout (ZERO code copied from V15, ZERO mock data) | Posture, calculator, waterfall, risk metrics render |
+| 8.6 | Wire Strategy page with real data — keep content, redesign layout (ZERO code copied from legacy baseline, ZERO mock data) | Posture, calculator, waterfall, risk metrics render |
 | 8.7 | Build `/api/vegas/intel` route | Returns events, restaurants, scores, customer data |
-| 8.8 | Wire Vegas Intel page with real data — ALL content, better layout. Events = everything. Intel buttons + AI sales strategy + real customer API data + real oil usage = gold. (ZERO code copied from V15, ZERO mock data) | All elements render |
-| 8.9 | Parity check: all pages vs V15 | Functionality matches or exceeds |
+| 8.8 | Wire Vegas Intel page with real data — ALL content, better layout. Events = everything. Intel buttons + AI sales strategy + real customer API data + real oil usage = gold. (ZERO code copied from legacy baseline, ZERO mock data) | All elements render |
+| 8.9 | Parity check: all pages vs legacy baseline | Functionality matches or exceeds |
 
 **Exit criteria:** All 6 pages (Landing, Dashboard, Strategy, Legislation, Sentiment, Vegas Intel) operational.
 
@@ -1097,16 +1097,16 @@ Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only vali
 
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
-| 10.1 | Run V15 + V16 side by side for 1 week | Both serving, compare outputs daily |
+| 10.1 | Run legacy baseline + V16 side by side for 1 week | Both serving, compare outputs daily |
 | 10.2 | Run Gate 6 (Parity Verification) — full suite | All parity checks pass |
 | 10.3 | Run Gate 4 (Data Flow Verification) — full suite | All data flows verified |
-| 10.4 | Freeze V15 changes | No new V15 deploys |
+| 10.4 | Freeze legacy baseline changes | No new legacy baseline deploys |
 | 10.5 | Switch DNS/routing to V16 | V16 serves production traffic |
 | 10.6 | Monitor for 48h | No errors, data fresh, charts correct |
-| 10.7 | Keep V15 as rollback for 2 weeks | Rollback available |
-| 10.8 | Retire V15 | Archive repo, disable Vercel project |
+| 10.7 | Keep legacy baseline as rollback for 2 weeks | Rollback available |
+| 10.8 | Retire legacy baseline | Archive repo, disable Vercel project |
 
-**Exit criteria:** V16 is production. V15 is archived.
+**Exit criteria:** V16 is production. legacy baseline is archived.
 
 ---
 
@@ -1116,13 +1116,13 @@ Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only vali
 
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|------|-----------|--------|------------|
-| **R1** | Chart rendering breaks during rewrite | Medium | **Critical** | Rewrite from scratch using V15 as visual reference, do not refactor. Test on preview with real data before proceeding. |
+| **R1** | Chart rendering breaks during rewrite | Medium | **Critical** | Rewrite from scratch using legacy baseline as visual reference, do not refactor. Test on preview with real data before proceeding. |
 | **R2** | pg_cron complexity / http extension limitations | Low | High | Test each plpgsql ingestion function individually. Fall back to Edge Functions if http extension cannot handle a specific API. |
 | **R3** | Supabase connection pooler timeouts during Python training writes | Medium | High | Use direct connection (port 5432) for bulk writes, not pooler. Set `statement_timeout`. |
-| **R4** | ProFarmer scraper breaks in Playwright rebuild | Medium | High ($500/mo) | Build Playwright version early. Test against ProFarmer site. Keep V15 scraper as fallback. |
-| **R5** | Specialist feature generators produce different signals after rebuild | Medium | High | Validate V16 outputs against V15 outputs row-by-row before training. |
+| **R4** | ProFarmer scraper breaks in Playwright rebuild | Medium | High ($500/mo) | Build Playwright version early. Test against ProFarmer site. Keep legacy baseline scraper as fallback. |
+| **R5** | Specialist feature generators produce different signals after rebuild | Medium | High | Validate V16 outputs against legacy baseline outputs row-by-row before training. |
 | **R6** | AutoGluon model performance degrades on clean matrix | Medium | Medium | Expected — clean matrix has different features. Retrain and evaluate. Dry run first. |
-| **R7** | FRED/Databento/USDA API changes between builds | Low | Medium | Use V15 as reference for API contracts. Check docs before building each cron. |
+| **R7** | FRED/Databento/USDA API changes between builds | Low | Medium | Use legacy baseline as reference for API contracts. Check docs before building each cron. |
 | **R8** | Supabase RLS blocks legitimate reads | Medium | Medium | Test RLS policies explicitly in Gate 3. |
 | **R9** | Vegas Intel data sync breaks (Glide integration) | Low | Medium | Evaluate Glide sync separately. |
 | **R10** | Schema drift on cloud Supabase | Low | Medium | Supabase CLI migrations as single source of truth (`db push`, `db diff --linked`). Never manual DDL. No local Supabase to drift. |
@@ -1168,9 +1168,9 @@ Supabase connectivity
 
 ---
 
-## Appendix A: V15 Reference Files
+## Appendix A: legacy baseline Reference Files
 
-These V15 files serve as reference for what V16 must deliver. They are NOT copied — they are studied for contracts and behavior.
+These legacy baseline files serve as reference for what V16 must deliver. They are NOT copied — they are studied for contracts and behavior.
 
 ### Chart (visual reference — most critical, rewrite from scratch)
 - [`frontend/src/components/LightweightZlCandlestickChart.tsx`](frontend/src/components/LightweightZlCandlestickChart.tsx)

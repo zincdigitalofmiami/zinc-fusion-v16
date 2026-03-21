@@ -9,7 +9,7 @@
 
 ## Decision
 
-**V16 replaces V15's 104 Inngest functions with 4 tiers of job homes. Only genuine garbage removed — 2 functions deleted (redundant with promote_to_cloud.py), 1 moved to Tier B (board_crush is SQL derivation), 2 merged (nyfed→fred, eia→supply_monthly). Databento functions STAY SEPARATE — different symbol sets, different failure domains. Tier A has ~21 pg_cron + http functions, all spread out overnight starting 2 AM CT. Tier B has 6 DB-internal jobs. Tier C has 8 Python workers + promote_to_cloud.py. Tier D is Python Playwright. Zero Vercel cron routes. All API keys in Supabase Vault.**
+**V16 replaces legacy baseline's 104 Inngest functions with 4 tiers of job homes. Only genuine garbage removed — 2 functions deleted (redundant with promote_to_cloud.py), 1 moved to Tier B (board_crush is SQL derivation), 2 merged (nyfed→fred, eia→supply_monthly). Databento functions STAY SEPARATE — different symbol sets, different failure domains. Tier A has ~21 pg_cron + http functions, all spread out overnight starting 2 AM CT. Tier B has 6 DB-internal jobs. Tier C has 8 Python workers + promote_to_cloud.py. Tier D is Python Playwright. Zero Vercel cron routes. All API keys in Supabase Vault.**
 
 ---
 

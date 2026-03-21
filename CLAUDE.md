@@ -2,7 +2,7 @@
 
 ## What This Project Is
 
-Commodity procurement forecasting system for ZL (soybean oil futures). Clean-room rebuild of V15 on Supabase — **no code transferred, everything written from scratch.**
+Commodity procurement forecasting system for ZL (soybean oil futures). Clean-room rebuild of legacy baseline on Supabase — **no code transferred, everything written from scratch.**
 
 **Client:** US Oil Solutions (Las Vegas)
 
@@ -12,7 +12,7 @@ Commodity procurement forecasting system for ZL (soybean oil futures). Clean-roo
 
 **The migration plan is your bible:** [`docs/plans/2026-03-17-v16-migration-plan.md`](docs/plans/2026-03-17-v16-migration-plan.md) — 1,235 lines, 14 sections, every table/route/job/phase defined.
 
-**Mandatory planning standard for this repository:** Every new or revised plan must follow [`plans/zinc-fusion-v16-ralph-loop-workflow-guide.md`](plans/zinc-fusion-v16-ralph-loop-workflow-guide.md). Use it as the source of truth for Ralph Loop and Ralph Hooks planning, keep the workflow scoped to ZINC Fusion V16 only, and do not introduce `Warbird Pro` naming or cross-project references into this repository.
+**Mandatory planning standard for this repository:** Every new or revised plan must follow [`plans/zinc-fusion-v16-ralph-loop-workflow-guide.md`](plans/zinc-fusion-v16-ralph-loop-workflow-guide.md). Use it as the source of truth for Ralph Loop and Ralph Hooks planning, keep the workflow scoped to ZINC Fusion V16 only, and do not introduce `external project` naming or cross-project references into this repository.
 
 ---
 
@@ -71,9 +71,9 @@ Pay special attention to:
 - **Section 11** — Phased execution (what order to build things)
 - **Section 10** — Evaluation gates (what must pass before moving on)
 
-### 4. Understand the V15 Reference
+### 4. Understand the legacy baseline Reference
 
-V15 lives at a separate path (likely `/Volumes/Satechi Hub/ZINC-FUSION-V15/` or wherever the user has it). It is a **reference library**, not a source of code. You study it for:
+legacy baseline lives at a separate path (likely `/Volumes/Satechi Hub/ZINC-FUSION-legacy baseline/` or wherever the user has it). It is a **reference library**, not a source of code. You study it for:
 
 - What the chart looks like and how it behaves
 - What data contracts the API routes serve
@@ -83,11 +83,11 @@ V15 lives at a separate path (likely `/Volumes/Satechi Hub/ZINC-FUSION-V15/` or 
 
 You do NOT:
 
-- Copy files from V15
-- Import V15 modules
-- Reuse V15's Prisma migrations
-- Carry over V15's `.env` files
-- Port V15's Inngest functions
+- Copy files from legacy baseline
+- Import legacy baseline modules
+- Reuse legacy baseline's Prisma migrations
+- Carry over legacy baseline's `.env` files
+- Port legacy baseline's Inngest functions
 
 ---
 
@@ -122,10 +122,10 @@ You do NOT:
 6. **9 schemas:** mkt, econ, alt, supply, training, forecasts, analytics, ops, vegas. No others.
 7. **ProFarmer is mandatory** ($500/month). Rebuilt as Python Playwright scraper, not Node.js Puppeteer.
 8. **Training gate:** NEVER start model training without explicit user approval.
-9. **Chart is sacred.** REWRITE from scratch using V15 as visual reference — zero modifications to behavior. NEVER copy V15 code.
-10. **Landing page is sacred.** REWRITE from scratch using V15 as visual reference — preserve the design identity. NEVER copy V15 code.
+9. **Chart is sacred.** REWRITE from scratch using legacy baseline as visual reference — zero modifications to behavior. NEVER copy legacy baseline code.
+10. **Landing page is sacred.** REWRITE from scratch using legacy baseline as visual reference — preserve the design identity. NEVER copy legacy baseline code.
 11. **ZERO mock data.** No placeholders, no temps, no demo/synthetic/random data anywhere, ever. Empty state until real data flows. This is the HARDEST rule.
-12. **ZERO code copying.** Every line of V16 is written fresh. V15 is a visual reference only. Clone-and-clean failed catastrophically — never again.
+12. **ZERO code copying.** Every line of V16 is written fresh. legacy baseline is a visual reference only. Clone-and-clean failed catastrophically — never again.
 13. **No local Supabase / No Docker.** Cloud Supabase only. Supabase CLI for migrations (`db push`). No `supabase start`.
 14. **No hardcoded port 3000.** Dev server port must be checked for availability first.
 15. **Design holdoff.** Do not propose UI design changes until user signals readiness. Build clean structure, defer aesthetics.
@@ -174,16 +174,16 @@ Full details in the migration plan. Quick reference:
 | ------ | ------------------------------ | ----------------------------------------------- |
 | **0**  | Infrastructure foundation      | Supabase cloud + Vercel + shadcn/ui + health route |
 | **1**  | Schema & seed                  | All 9 schemas, RLS, indexes, Gate 2 passes      |
-| **1.5** | **All page rewrites**         | All 6 pages rewritten from scratch (V15 visual ref only). Empty state until data wired. |
+| **1.5** | **All page rewrites**         | All 6 pages rewritten from scratch (legacy baseline visual ref only). Empty state until data wired. |
 | **2**  | Read path — chart & live price | Chart renders with real data from Supabase      |
-| **3**  | Landing page completion        | Faithful rewrite of V15 landing design          |
+| **3**  | Landing page completion        | Faithful rewrite of legacy baseline landing design          |
 | **4**  | Data ingestion (pg_cron+http)  | ZL daily, intraday, FRED, futures — all via Supabase pg_cron |
 | **5**  | Python pipeline rebuild        | Full ML pipeline, local files for intermediates, promote to cloud |
 | **6**  | Remaining ingestion + ProFarmer | All data sources feeding via pg_cron+http, ProFarmer Playwright |
 | **7**  | Dashboard completion           | Target Zones, drivers, regime, cards — all live |
 | **8**  | Secondary pages wiring         | Sentiment, Legislation, Strategy, Vegas Intel — real data |
 | **9**  | Auth & observability           | Supabase Auth, monitoring, Gate 3 passes        |
-| **10** | Parallel validation & cutover  | V15/V16 parity confirmed, traffic switched      |
+| **10** | Parallel validation & cutover  | legacy baseline/V16 parity confirmed, traffic switched      |
 
 ---
 
@@ -244,7 +244,7 @@ CREATE POLICY "service_role_write" ON schema.table
 
 ---
 
-## Tips From V15 Experience
+## Tips From legacy baseline Experience
 
 These are hard-won lessons. Don't repeat them.
 
@@ -252,7 +252,7 @@ These are hard-won lessons. Don't repeat them.
 
 - **FRED daily** only fetches `limit=5` (latest obs). Full history needs `refresh_fred_api.py`.
 - **EIA API** has been intermittently down since Mar 2026. Build with graceful fallback.
-- **MPOB Palm** needs a valid FAS OpenData API key. The V15 key was wrong (FoodData Central, not FAS).
+- **MPOB Palm** needs a valid FAS OpenData API key. The legacy baseline key was wrong (FoodData Central, not FAS).
 - **Yahoo Finance v8** downsamples to monthly for large date ranges. Use 1-year windows with `period1/period2`.
 - **FAS site** (fas.usda.gov) returns HTTP/2 stream errors. Needs retry logic.
 - **UCO/Tallow** prices: no free direct API. Use FRED PPI proxies: `WPU06410132` (Tallow PPI) + `PCU3116133116132` (Rendering PPI).
@@ -331,7 +331,7 @@ V16 is complete when:
 
 - The chart renders correctly with real ZL data from Supabase
 - Target Zones render correctly (P30/P50/P70 horizontal lines)
-- The landing page matches V15's premium design identity (rewritten, not copied)
+- The landing page matches legacy baseline's premium design identity (rewritten, not copied)
 - All 6 pages are operational with real data
 - Only validated routes and jobs exist (no legacy baggage)
 - Supabase owns the clean database with RLS enforced — cloud only, no local DB
@@ -341,4 +341,4 @@ V16 is complete when:
 - ProFarmer Playwright scraper is working ($500/mo source, 7 sections, 35 runs/week)
 - Auth protects dashboard routes
 - Zero mock data anywhere in the codebase
-- V15 can be turned off without losing functionality
+- legacy baseline can be turned off without losing functionality

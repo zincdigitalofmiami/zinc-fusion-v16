@@ -22,7 +22,7 @@
 | R8: RLS blocks reads | **Mitigated** | Gate 3 split — 3a passes now, 3b tested Phase 9 | CP8 |
 | R10: Schema drift | **Mitigated** | Cloud-only, migrations as single source of truth | CP1 |
 | R12: Env var mismatch | **Mitigated** | Vercel <> Supabase integration, vercel env pull | CP1 |
-| R7: API changes | **Partially mitigated** | V15 API keys documented, check docs before each cron | Memory |
+| R7: API changes | **Partially mitigated** | legacy baseline API keys documented, check docs before each cron | Memory |
 
 ### Open Risks (8)
 
@@ -31,8 +31,8 @@
 | **R1: Chart breaks during rewrite** | Medium | **Critical** | Chart not started. Biggest single deliverable. | Phase 2 |
 | **R2: pg_cron/http limitations** | Low | High | No functions written yet. CP4 consolidation reduces surface area. | Phase 4 |
 | **R3: Connection pooler timeouts** | Medium | High | Python pipeline not built. Use port 5432 direct for writes. | Phase 5 |
-| **R4: ProFarmer scraper breaks** | Medium | High | Not built. $500/mo source. V15 scraper is fallback. | Phase 6 |
-| **R5: Specialist features differ** | Medium | High | Pipeline not rebuilt. Must validate against V15 row-by-row. | Phase 5 |
+| **R4: ProFarmer scraper breaks** | Medium | High | Not built. $500/mo source. legacy baseline scraper is fallback. | Phase 6 |
+| **R5: Specialist features differ** | Medium | High | Pipeline not rebuilt. Must validate against legacy baseline row-by-row. | Phase 5 |
 | **R6: AutoGluon degrades** | Medium | Medium | Expected on clean matrix. Dry run first. Training gate exists. | Phase 5 |
 | **R9: Vegas Intel Glide sync** | Low | Medium | **UNDERSPECIFIED.** Glide integration path still undefined. | Phase 8 |
 | **R11: pg_cron timeout** | Low | Medium | Standard REST APIs. ProFarmer stays external. | Phase 4 |

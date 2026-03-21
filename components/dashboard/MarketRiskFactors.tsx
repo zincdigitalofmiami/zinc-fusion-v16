@@ -18,7 +18,7 @@ interface WhatsHappening {
 
 interface DriverData {
   name: string
-  score: number
+  score: number | null
   level: string
   regime: string
   headline: string
@@ -38,7 +38,7 @@ interface IntelligenceData {
 }
 
 interface MarketDriversResponse {
-  as_of_date: string
+  as_of_date: string | null
   as_of_date_min?: string
   as_of_date_max?: string
   mixed_vintage?: boolean
@@ -57,8 +57,28 @@ interface MarketDriversResponse {
   intelligence: IntelligenceData
 }
 
+function formatFreshnessLabel(
+  payload: Pick<MarketDriversResponse, "as_of_date" | "as_of_date_min" | "as_of_date_max" | "mixed_vintage"> | null | undefined,
+): string | null {
+  if (!payload) return null
+  if (payload.mixed_vintage && payload.as_of_date_min && payload.as_of_date_max) {
+    return `Mixed vintage ${payload.as_of_date_min} to ${payload.as_of_date_max}`
+  }
+  return payload.as_of_date ? `Data as of ${payload.as_of_date}` : null
+}
+
+function formatFreshnessSummary(
+  payload: Pick<MarketDriversResponse, "as_of_date" | "as_of_date_min" | "as_of_date_max" | "mixed_vintage"> | null | undefined,
+): string {
+  if (!payload) return "–"
+  if (payload.mixed_vintage && payload.as_of_date_min && payload.as_of_date_max) {
+    return `${payload.as_of_date_min} to ${payload.as_of_date_max}`
+  }
+  return payload.as_of_date ?? "–"
+}
+
 // ---------------------------------------------------------------------------
-// Label mappings (procurement-friendly)
+// Display label mappings
 // ---------------------------------------------------------------------------
 
 const DRIVER_NAMES: Record<string, string> = {
@@ -100,7 +120,8 @@ function getScoreColor(score: number): { stroke: string; glow: string } {
   return { stroke: "#EF4444", glow: "rgba(239,68,68,0.6)" }
 }
 
-function getScoreTextColor(score: number): string {
+function getScoreTextColor(score: number | null): string {
+  if (score === null) return "text-slate-500"
   if (score >= 70) return "text-red-400"
   if (score >= 55) return "text-orange-400"
   if (score >= 40) return "text-amber-400"
@@ -111,7 +132,18 @@ function getScoreTextColor(score: number): string {
 // Horizontal Meter
 // ---------------------------------------------------------------------------
 
-function HorizontalMeter({ score }: { score: number }) {
+function HorizontalMeter({ score }: { score: number | null }) {
+  if (score === null) {
+    return (
+      <div className="flex items-center gap-4 w-full">
+        <div className="flex-1 h-3 bg-slate-800 rounded-full overflow-hidden" />
+        <span className="text-3xl font-bold tabular-nums min-w-[3ch] text-right text-slate-500">
+          --
+        </span>
+      </div>
+    )
+  }
+
   const pct = Math.min(Math.max(score, 0), 100)
   const colors = getScoreColor(score)
   return (
@@ -151,13 +183,13 @@ function DriverCard({
   loading: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
-  const score = data?.score ?? 0
+  const score = data?.score ?? null
   const level = data?.level ? (LEVEL_LABELS[data.level] ?? data.level) : "--"
-  const colors = getScoreColor(score)
+  const colors = getScoreColor(score ?? 0)
   const wh = data?.whatsHappening
 
   const border =
-    score >= 65
+    score !== null && score >= 65
       ? { borderColor: colors.stroke, boxShadow: `0 0 20px ${colors.glow}` }
       : { borderColor: "rgba(255,255,255,0.08)" }
 
@@ -247,15 +279,18 @@ function DriverCard({
 // Main Export
 // ---------------------------------------------------------------------------
 
-export function ChrisTop4Drivers() {
+export function MarketRiskFactors() {
   const [data, setData] = useState<MarketDriversResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/dashboard/drivers")
-      .then((r) => r.json())
+    fetch("/api/dashboard/risk-factors", { cache: "no-store" })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((json) => {
-        if (json.data) setData(json.data)
+        if (!json.error) setData(json as MarketDriversResponse)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -277,6 +312,9 @@ export function ChrisTop4Drivers() {
               {data.summary.alert_count} ALERT{data.summary.alert_count > 1 ? "S" : ""}
             </span>
           )}
+        </div>
+        <div className="flex items-center gap-3">
+          {formatFreshnessLabel(data) && <span className="text-xs text-slate-600">{formatFreshnessLabel(data)}</span>}
         </div>
       </div>
 
@@ -338,7 +376,7 @@ export function ChrisTop4Drivers() {
         <div className="mt-6 flex items-center justify-between text-sm text-slate-500 px-2">
           <div>
             Average Risk:{" "}
-            <span className="font-mono" style={{ color: getScoreColor(data.summary.average_pressure).stroke }}>
+            <span className="font-mono" style={{ color: getScoreColor(data.summary.average_pressure ?? 0).stroke }}>
               {data.summary.average_pressure}
             </span>
           </div>
@@ -350,7 +388,7 @@ export function ChrisTop4Drivers() {
             </span>)
           </div>
           <div>
-            Freshness: <span className="text-slate-400">{data.as_of_date ?? "–"}</span>
+            Freshness: <span className="text-slate-400">{formatFreshnessSummary(data)}</span>
           </div>
         </div>
       )}

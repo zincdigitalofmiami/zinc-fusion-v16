@@ -5,7 +5,7 @@ import { BackendShell } from "@/components/backend-shell"
 import { ZlCandlestickChart } from "@/components/chart/ZlCandlestickChart"
 import { ProbabilitySurface } from "@/components/dashboard/ProbabilitySurface"
 import { RegimeAnalysisChart } from "@/components/dashboard/RegimeAnalysisChart"
-import { ChrisTop4Drivers } from "@/components/dashboard/ChrisTop4Drivers"
+import { MarketRiskFactors } from "@/components/dashboard/MarketRiskFactors"
 import { useZlLivePrice } from "@/lib/hooks/useZlLivePrice"
 import type { TargetZone } from "@/lib/contracts/api"
 
@@ -52,7 +52,7 @@ export default function DashboardPage() {
       </div>
 
       {/* SECTION 4: Market Risk Factors */}
-      <ChrisTop4Drivers />
+      <MarketRiskFactors />
     </BackendShell>
   )
 }

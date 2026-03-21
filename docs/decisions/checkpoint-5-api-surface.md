@@ -145,9 +145,9 @@ Recommendation: Define metric_keys when wiring the route (Phase 7). Table struct
 
 ---
 
-## Dropped V15 Routes (10 confirmed dead)
+## Dropped legacy baseline Routes (10 confirmed dead)
 
-| V15 Route | Why Dropped | Functionality Absorbed By |
+| legacy baseline Route | Why Dropped | Functionality Absorbed By |
 |-----------|-------------|--------------------------|
 | /api/zl/brief | Redundant | /api/zl/forecast |
 | /api/zl/context | Redundant | /api/dashboard/metrics |
@@ -185,7 +185,7 @@ Recommendation: Define metric_keys when wiring the route (Phase 7). Table struct
 | Zero mock data | **FAILS (3 routes)** | posture, sentiment, vegas need fixing to return null |
 | All routes map to real tables | Yes | 15/15 verified against migrations |
 | Route-to-table column compatibility | **2 mismatches** | bucket_ts/tradeDate, trade_date/updatedAt — fixable in route |
-| Dropped V15 routes confirmed dead | Yes | 10 routes, functionality absorbed |
+| Dropped legacy baseline routes confirmed dead | Yes | 10 routes, functionality absorbed |
 | No Vercel cron routes | Yes | app/api/cron/ does not exist |
 | Data flows end-to-end | **No** | All routes except health/auth are scaffolds |
 | Complex routes identified | Yes | sentiment (2 tables), legislation (3), vegas (7) |

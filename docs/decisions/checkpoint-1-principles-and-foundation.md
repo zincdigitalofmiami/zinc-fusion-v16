@@ -138,7 +138,7 @@ Option A. The migrations exist, the health route validates DB connectivity, exte
 | pg_cron + http for ingestion | Yes | Extensions in migrations |
 | Vercel = frontend only | Yes | vercel.json crons empty |
 | Zero mock data | **FAILS** | 3 routes return hardcoded fake data: /api/strategy/posture ("WAIT"), /api/sentiment/overview (zeros), /api/vegas/intel (zeros). 12 other routes correctly return empty arrays or null. |
-| Zero V15 code copied | Yes | Clean repo, fresh migrations |
+| Zero legacy baseline code copied | Yes | Clean repo, fresh migrations |
 | 11 specialists | Yes | Confirmed in config.py |
 | shadcn/ui | Yes | Components exist under components/ui/ |
 | 9 schemas exactly | Yes | Init migration creates exactly 9 |
@@ -196,7 +196,7 @@ This section was added retroactively per user request for deeper analysis on all
 | vercel env pull | Yes | Assumed from prior session |
 | /api/health | Yes | Yes — live route |
 | psycopg2 test | **NO** | **Still untested** |
-| V16 not linked to V15 | **NO** | **Still untested** |
+| V16 not linked to legacy baseline | **NO** | **Still untested** |
 
 **Action items carried forward:** 2 Gate 1 tests still need running before Phase 2 starts.
 

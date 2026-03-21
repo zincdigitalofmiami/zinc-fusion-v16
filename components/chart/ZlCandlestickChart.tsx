@@ -13,7 +13,8 @@ import {
   type Time,
 } from "lightweight-charts";
 import type { ZlPriceBar, TargetZone } from "@/lib/contracts/api";
-import { computeFibStructure } from "@/lib/chart/autofib";
+import { calculateFibonacciMultiPeriod, type CandleData, type FibResult } from "@/lib/chart/autofib";
+import { FibLinesPrimitive } from "@/lib/chart/FibLinesPrimitive";
 
 const CANDLE_THEME = {
   upColor: "#26C6DA",
@@ -72,6 +73,7 @@ export function ZlCandlestickChart({
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const fitCalledRef = useRef(false);
+  const fibLockedRef = useRef<FibResult | null>(null);
 
   const [bars, setBars] = useState<ZlPriceBar[]>([]);
   const [lastPrice, setLastPrice] = useState<number | null>(null);
@@ -219,6 +221,8 @@ export function ZlCandlestickChart({
 
     series.setData(candleData);
     seriesRef.current = series;
+    const fibPrimitive = new FibLinesPrimitive();
+    series.attachPrimitive(fibPrimitive);
 
     // Target Zone lines — clean horizontal lines, minimal labels
     for (const zone of targetZones) {
@@ -248,23 +252,37 @@ export function ZlCandlestickChart({
       });
     }
 
-    // AutoFib structure lines — computed from OHLCV bars
-    const fibStruct = computeFibStructure(
-      bars.map((b) => b.high),
-      bars.map((b) => b.low),
-      bars.map((b) => b.close),
-    );
-    if (fibStruct) {
-      for (const level of fibStruct.levels) {
-        series.createPriceLine({
-          price: level.price,
-          color: level.color,
-          lineWidth: level.width as 1 | 2,
-          lineStyle: 0,
-          axisLabelVisible: false,
-          title: "",
-        });
-      }
+    // Fib rendering: anchored start, pivot zone fill, and structural-break lock.
+    const fibCandles: CandleData[] = bars.map((b, idx) => ({
+      time: idx,
+      open: b.open,
+      high: b.high,
+      low: b.low,
+      close: b.close,
+      volume: b.volume,
+    }));
+
+    const currentPrice = bars[bars.length - 1]?.close;
+    let fibResult = fibLockedRef.current;
+    if (
+      !fibResult ||
+      currentPrice == null ||
+      currentPrice > fibResult.anchorHigh ||
+      currentPrice < fibResult.anchorLow
+    ) {
+      fibResult = calculateFibonacciMultiPeriod(fibCandles);
+      fibLockedRef.current = fibResult;
+    }
+
+    if (fibResult) {
+      const anchorIdx = Math.min(
+        fibResult.anchorHighBarIndex,
+        fibResult.anchorLowBarIndex,
+      );
+      const anchorStartTime = candleData[anchorIdx]?.time;
+      fibPrimitive.setFibResult(fibResult, anchorStartTime);
+    } else {
+      fibPrimitive.setFibResult(null);
     }
 
     // Set initial visible range: last N bars + right padding
@@ -295,6 +313,7 @@ export function ZlCandlestickChart({
       disposed = true;
       observer.disconnect();
       try {
+        series.detachPrimitive(fibPrimitive);
         chart.remove();
       } catch {
         /* disposed */

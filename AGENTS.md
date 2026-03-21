@@ -34,7 +34,7 @@ Mandatory planning defaults:
 3. Run one Ralph Loop per checkpoint and write a decision document for each checkpoint.
 4. Update canonical planning docs, [`AGENTS.md`](AGENTS.md), and [`CLAUDE.md`](CLAUDE.md) whenever a checkpoint changes verified ground truth.
 5. Implement only after all checkpoint decisions are locked.
-6. Keep all naming scoped to ZINC Fusion V16 in this repository. Do not introduce or reuse `Warbird Pro` naming, references, or examples here.
+6. Keep all naming scoped to ZINC Fusion V16 in this repository. Do not introduce or reuse `external project` naming, references, or examples here.
 
 ### Reasoning Guardrails
 

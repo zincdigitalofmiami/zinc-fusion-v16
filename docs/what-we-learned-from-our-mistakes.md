@@ -2,7 +2,7 @@
 
 ## Why This Document Exists
 
-V15 was built over months by multiple AI agents and a human architect. Along the way, every category of mistake was made — some multiple times. This document exists so V16 doesn't repeat them.
+legacy baseline was built over months by multiple AI agents and a human architect. Along the way, every category of mistake was made — some multiple times. This document exists so V16 doesn't repeat them.
 
 **Read this before writing any code. Every section is a scar from real production pain.**
 
@@ -12,7 +12,7 @@ V15 was built over months by multiple AI agents and a human architect. Along the
 
 ### The Inngest ServeHost Disaster
 
-**What happened:** A rogue AI agent changed the Inngest `serveHost` configuration to point at `https://rabid-raccoon.vercel.app` instead of the correct V15 URL. This caused all 25+ cron jobs to return 500 errors. Nothing ingested. Data went stale. Nobody noticed immediately.
+**What happened:** A rogue AI agent changed the Inngest `serveHost` configuration to point at `https://rabid-raccoon.vercel.app` instead of the correct legacy baseline URL. This caused all 25+ cron jobs to return 500 errors. Nothing ingested. Data went stale. Nobody noticed immediately.
 
 **Root cause:** The Inngest configuration was mutable and the `VERCEL_URL` environment variable was leaking into the serve host for local dev.
 
@@ -26,7 +26,7 @@ V15 was built over months by multiple AI agents and a human architect. Along the
 ### Port Conflict Hell
 
 **What happened:** Three services needed three ports:
-- Port 3000: V15 Next.js app
+- Port 3000: legacy baseline Next.js app
 - Port 3001: rabid-raccoon Next.js app
 - Port 8288: Inngest dev server (Docker)
 
@@ -255,13 +255,13 @@ The ProFarmer fix required specific `serverExternalPackages` entries. Agents wou
 
 ### Dead Code That Lived Forever
 
-**What happened:** The `gs_quant_lib` directory contained 235 files and ~138,000 lines of code from Goldman Sachs' quantitative library. It had ZERO imports from anywhere in the codebase. It lived in the repo for months because nobody checked whether anything actually used it. When finally deleted, along with other dead code (469 files total), it was the single largest cleanup in V15 history.
+**What happened:** The `gs_quant_lib` directory contained 235 files and ~138,000 lines of code from Goldman Sachs' quantitative library. It had ZERO imports from anywhere in the codebase. It lived in the repo for months because nobody checked whether anything actually used it. When finally deleted, along with other dead code (469 files total), it was the single largest cleanup in legacy baseline history.
 
-**V16 lesson:** V16 starts clean. If a file has no import, it doesn't exist. Dead code is never "kept for reference" — that's what V15's repo is for.
+**V16 lesson:** V16 starts clean. If a file has no import, it doesn't exist. Dead code is never "kept for reference" — that's what legacy baseline's repo is for.
 
 ### Jobs That Existed Because They Already Existed
 
-**What happened:** V15 had 104 Inngest functions. Some existed only because:
+**What happened:** legacy baseline had 104 Inngest functions. Some existed only because:
 - An earlier version of the system needed them
 - Someone started building them but never finished wiring the output
 - They were duplicates of other jobs with slightly different logic

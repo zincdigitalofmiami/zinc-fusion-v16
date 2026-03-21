@@ -121,7 +121,7 @@ ingest_run, data_quality_log, pipeline_alerts, source_registry. All have PK, cre
 
 ### vegas (7 tables)
 
-restaurants, casinos, events, venues, fryers, customer_scores, event_impact. Consolidated from V15's 17 tables. Use JSONB metadata columns for flexibility. Foreign keys via restaurant_id, event_id, venue_id.
+restaurants, casinos, events, venues, fryers, customer_scores, event_impact. Consolidated from legacy baseline's 17 tables. Use JSONB metadata columns for flexibility. Foreign keys via restaurant_id, event_id, venue_id.
 
 ---
 

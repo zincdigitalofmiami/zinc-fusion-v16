@@ -9,7 +9,7 @@
 
 ## Decision
 
-**All 6 pages exist as functional shells wired to their API routes. Zero V15 code copied. All pages use shadcn/ui Card + Badge components with design tokens from globals.css. The product surface matches the migration plan's requirements. Landing page has 8 of 11 specialist cards (missing: Tariff, Substitutes, Trump Effect). Dashboard is the most complete shell (chart placeholder, status bar, target zones grid, drivers, regime). Vegas Intel has all 5 required sections. HOWEVER: 3 API routes return hardcoded fake data (strategy/posture returns "WAIT", sentiment/overview returns zeros, vegas/intel returns zeros) — these violate the zero-mock-data rule and must be fixed to return null.**
+**All 6 pages exist as functional shells wired to their API routes. Zero legacy baseline code copied. All pages use shadcn/ui Card + Badge components with design tokens from globals.css. The product surface matches the migration plan's requirements. Landing page has 8 of 11 specialist cards (missing: Tariff, Substitutes, Trump Effect). Dashboard is the most complete shell (chart placeholder, status bar, target zones grid, drivers, regime). Vegas Intel has all 5 required sections. HOWEVER: 3 API routes return hardcoded fake data (strategy/posture returns "WAIT", sentiment/overview returns zeros, vegas/intel returns zeros) — these violate the zero-mock-data rule and must be fixed to return null.**
 
 ---
 
@@ -31,7 +31,7 @@
 **Gaps:**
 - Missing 3 specialist cards: Tariff, Substitutes, Trump Effect
 - Missing method/methodology section explaining how the intelligence stack works
-- No chart teaser section (V15 had a preview of the real chart)
+- No chart teaser section (legacy baseline had a preview of the real chart)
 
 ### 2. Dashboard (`/dashboard`) — app/dashboard/page.tsx (169 lines)
 
@@ -89,7 +89,7 @@
 
 **API route wired:** `/api/sentiment/overview`
 
-**Gaps:** None — first 3 rows from V15 design are represented.
+**Gaps:** None — first 3 rows from legacy baseline design are represented.
 
 ### 6. Vegas Intel (`/vegas-intel`) — app/vegas-intel/page.tsx (117 lines)
 
@@ -161,7 +161,7 @@ Option A. The page shells serve their purpose: they stand up the product surface
 |------|---------|------|
 | 6 pages exist | Yes | /, /dashboard, /strategy, /legislation, /sentiment, /vegas-intel |
 | Zero mock data | **FAILS (3 routes)** | Strategy returns hardcoded "WAIT", Sentiment returns hardcoded zeros, Vegas returns hardcoded zeros. Must be fixed to return null. |
-| Zero V15 code | Yes | All written fresh |
+| Zero legacy baseline code | Yes | All written fresh |
 | shadcn/ui components | Yes | Card, Badge used across pages |
 | Each page wires to API route | Yes | 9 total API calls across pages |
 | Design holdoff respected | Yes | No aesthetic improvements proposed |

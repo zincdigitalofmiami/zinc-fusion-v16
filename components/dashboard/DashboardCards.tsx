@@ -172,7 +172,7 @@ export function DashboardCards() {
         </Card>
       </div>
 
-      {/* Specialist Risk Cards — 2-column grid matching V15 */}
+      {/* Specialist Risk Cards — 2-column grid */}
       <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2">
         <SpecialistCard
           title="Market Volatility"

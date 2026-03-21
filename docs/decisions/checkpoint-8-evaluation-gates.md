@@ -27,7 +27,7 @@
 | `vercel env pull` works | Used during setup | **YES** | .env.local generated |
 | `/api/health` responds | Live route, queries ops.source_registry | **YES** | Returns { ok: true, dbReachable: true } |
 | psycopg2 connection from Python | **UNTESTED** | **NEEDS TEST** | No connection test script exists |
-| V16 NOT linked to V15 project | **UNTESTED** | **NEEDS TEST** | Need to run `vercel ls` |
+| V16 NOT linked to legacy baseline project | **UNTESTED** | **NEEDS TEST** | Need to run `vercel ls` |
 
 **Action needed:** Create a Python connection test script. Verify Vercel project isolation.
 
@@ -117,20 +117,20 @@
 
 **Dependency chain:** Gate 1 → Gate 2 → Gate 4 (data in) → Gate 5 (process data) → Gate 4 again (verify UI reads it)
 
-### Gate 6: Parity Verification (V15 vs V16)
+### Gate 6: Parity Verification (legacy baseline vs V16)
 
 **When it can pass:** Phase 10 (final)
 
 | Criterion | What's Needed |
 |-----------|--------------|
-| Same OHLCV data | V15 running, V16 live, diff API responses |
+| Same OHLCV data | legacy baseline running, V16 live, diff API responses |
 | Same latest price | Compare timestamps within tolerance |
 | Same Target Zones | Side-by-side chart comparison |
 | Same dashboard cards | Screenshot comparison |
 | Same sentiment feed | Visual comparison |
 | Same Vegas Intel | Data comparison |
 
-**This gate requires V15 to be running.** It's the cutover gate — once it passes, V15 can be turned off.
+**This gate requires legacy baseline to be running.** It's the cutover gate — once it passes, legacy baseline can be turned off.
 
 ---
 
@@ -146,7 +146,7 @@ Gate 3a (Infra Security) → NOW ───────────────�
 Gate 4 (Data Flow)     → Phase 4-7 (ingestion + API wiring + chart)
 Gate 5 (Pipeline)      → Phase 5 (after Gate 4 has data flowing)
 Gate 3b (Auth Enforce) → Phase 9 (auth activation, last before parity)
-Gate 6 (Parity)        → Phase 10 (V15 vs V16 side-by-side)
+Gate 6 (Parity)        → Phase 10 (legacy baseline vs V16 side-by-side)
 ```
 
 **Key insight:** Gates 1, 2, 3a can pass NOW. Everything else requires building.
@@ -187,7 +187,7 @@ Gate 6 (Parity)        → Phase 10 (V15 vs V16 side-by-side)
 5. **Phase 4-7:** Build toward Gate 4
 6. **Phase 5:** Build toward Gate 5 (depends on Gate 4)
 7. **Phase 9:** Gate 3b — activate auth, verify enforcement
-8. **Phase 10:** Gate 6 — V15/V16 parity check
+8. **Phase 10:** Gate 6 — legacy baseline/V16 parity check
 
 ---
 
