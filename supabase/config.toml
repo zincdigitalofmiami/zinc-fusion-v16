@@ -1,20 +1,15 @@
 project_id = "zinc-fusion-v16"
 
 [api]
-enabled = true
-port = 54321
+enabled = false
 schemas = ["public", "mkt", "econ", "alt", "supply", "training", "forecasts", "analytics", "ops", "vegas"]
 extra_search_path = ["public", "extensions"]
-max_rows = 1000
 
 [db]
-port = 54322
-shadow_port = 54320
 major_version = 17
 
 [studio]
-enabled = true
-port = 54323
+enabled = false
 
 [inbucket]
 enabled = false
