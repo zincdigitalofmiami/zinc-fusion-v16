@@ -1,0 +1,13 @@
+# Indicator Review
+
+Math, logic, and signal-value audit for ZINC Fusion V16 indicators and specialist features.
+
+**When to invoke:** verifying indicator math is correct, checking whether an indicator adds real signal for ZL soybean oil forecasting, identifying overtooled or redundant features, auditing chart-side calculations, reviewing specialist feature logic, or assessing GARCH/Monte Carlo parameter choices.
+
+**Does NOT:** train models, modify production data, or apply changes without explicit approval.
+
+---
+
+Read the full skill file at `.github/skills/indicator-review/SKILL.md` and follow it exactly — including all loop structure, Loop 4.5 approval gate, risk-tiered change plan format, commit intent gate, and Hard Rules. Do not skip or abbreviate any loop.
+
+$ARGUMENTS
