@@ -398,7 +398,7 @@ Python writes intermediates to **LOCAL FILES** (parquet), not directly to cloud 
 | Script | What It Does | Writes To (Local) | Promoted To (Cloud) | Trigger |
 |--------|-------------|-------------------|---------------------|---------|
 | `build_matrix.py` | Assemble feature matrix | `data/matrix_1d.parquet` | training.matrix_1d | Manual / system cron |
-| `train_models.py` | AutoGluon training (4 horizons) | `models/` artifacts + `data/training_*.parquet` | training.*, model_registry | Manual (training gate) |
+| `train_models.py` | AutoGluon training (3 horizons: 30d/90d/180d) | `models/` artifacts + `data/training_*.parquet` | training.*, model_registry | Manual (training gate) |
 | `generate_specialist_features.py` | 11 specialist feature generators | `data/specialist_features_*.parquet` | training.specialist_features_* | Manual / system cron |
 | `generate_specialist_signals.py` | Composite signal extraction | `data/specialist_signals.parquet` | training.specialist_signals_1d | After features |
 | `generate_forward_forecasts.py` | Forward inference | `data/forecasts_production.parquet` | forecasts.production_1d | After training |
@@ -547,7 +547,7 @@ Phase 1: Data Ingestion     <-- pg_cron + http extension handles this (not Pytho
 Phase 2: Feature Assembly    <-- build_matrix.py
 Phase 3: Specialist Features <-- generate_specialist_features.py
 Phase 4: Specialist Signals  <-- generate_specialist_signals.py
-Phase 5: Core Training       <-- train_models.py (AutoGluon, 4 horizons)
+Phase 5: Core Training       <-- train_models.py (AutoGluon, 3 horizons: 30d/90d/180d)
 Phase 6: Forward Inference   <-- generate_forward_forecasts.py
 Phase 7: Monte Carlo         <-- run_monte_carlo.py (10,000 runs)
 Phase 8: GARCH               <-- run_garch.py
@@ -615,7 +615,7 @@ Env vars:
 
 ### Model Architecture (unchanged conceptually)
 
-- **L0 Core:** 4 AutoGluon TimeSeriesPredictor ensembles (5d/21d/63d/126d), each training 19-model zoo
+- **L0 Core:** 3 AutoGluon TimeSeriesPredictor ensembles (30d/90d/180d), each training 19-model zoo
 - **Target:** Future ZL futures contract price (`close.shift(-horizon)`), columns named `target_price_{h}d`
 - **Metric:** MAE (point forecast accuracy)
 - **Output:** Single `predicted_price` per horizon
@@ -836,7 +836,7 @@ V16 tokens for shadcn/ui customization:
 | `build_matrix.py` writes to training.matrix_1d in cloud Supabase | Row count > 0, column count matches |
 | All 11 specialist feature generators complete | specialist_features_{bucket} has rows for each |
 | `generate_specialist_signals.py` produces 33 signal columns | Check specialist_signals_1d |
-| Training run completes for all 4 horizons | training_runs has 4 new rows |
+| Training run completes for all 3 horizons | training_runs has 3 new rows |
 | Forward inference writes to forecasts.production_1d | Predicted prices exist per horizon |
 | Monte Carlo writes 10,000 runs | monte_carlo_runs count check |
 | `generate_target_zones.py` produces P30/P50/P70 | target_zones has rows |
@@ -996,7 +996,7 @@ Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only vali
 | 5.2 | Rebuild `build_matrix.py` — reads from cloud Supabase, writes `data/matrix_1d.parquet` locally | Local parquet has rows with expected column count |
 | 5.3 | Rebuild specialist feature generators (all 11) — writes `data/specialist_features_*.parquet` locally | Local parquet files populated for each bucket |
 | 5.4 | Rebuild `generate_specialist_signals.py` — writes `data/specialist_signals.parquet` locally | Local parquet has 33 signal columns |
-| 5.5 | Rebuild `train_models.py` — AutoGluon, 4 horizons, frozen zoo — writes artifacts + parquet locally | Training completes, artifacts saved locally, training_runs parquet logged |
+| 5.5 | Rebuild `train_models.py` — AutoGluon, 3 horizons (30d/90d/180d), frozen zoo — writes artifacts + parquet locally | Training completes, artifacts saved locally, training_runs parquet logged |
 | 5.6 | Rebuild `generate_forward_forecasts.py` — writes `data/forecasts_production.parquet` locally | Local parquet has predicted prices per horizon |
 | 5.7 | Rebuild `run_monte_carlo.py` — 10,000 runs — writes `data/monte_carlo_*.parquet` locally | Local parquet files populated |
 | 5.8 | Rebuild `run_garch.py` — writes `data/garch_forecasts.parquet` locally | Local parquet populated |

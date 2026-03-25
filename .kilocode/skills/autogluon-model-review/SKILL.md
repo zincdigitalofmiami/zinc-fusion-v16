@@ -17,10 +17,10 @@ Iterative read-then-fix-then-verify audit of the ZINC Fusion V16 AutoGluon train
 | Constant                 | Value                                                                                                                |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | **Specialists**          | crush, china, fx, fed, tariff, energy, biofuel, palm, volatility, substitutes, trump_effect — **11 total, NEVER 10** |
-| **Horizons**             | 30d, 90d, 180d (plus secondary 5d)                                                                                   |
+| **Horizons**             | 30d, 90d, 180d — **3 horizons, no 1w/5d/7d**                                                                        |
 | **Target naming**        | `target_price_{h}d` — future PRICE LEVEL, not returns                                                                |
 | **Model zoo**            | 19 models: LightGBM, XGBoost, Linear, ARIMA, AutoETS + ensemble                                                      |
-| **AutoGluon predictor**  | `TimeSeriesPredictor` — 4 instances (one per horizon)                                                                |
+| **AutoGluon predictor**  | `TimeSeriesPredictor` — 3 instances (one per horizon)                                                                 |
 | **Compute**              | CPU-only on macOS ARM — no DeepAR, TFT, PatchTST                                                                     |
 | **Covariate type**       | OBSERVED (lagged), not KNOWN                                                                                         |
 | **Intermediate storage** | Local parquet in `data/` and `models/` — never in DB                                                                 |

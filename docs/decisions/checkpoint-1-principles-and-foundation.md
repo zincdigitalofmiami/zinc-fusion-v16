@@ -53,9 +53,9 @@
 - Feature matrix assembly (~1500 cols × 2000+ rows)
 - 11 specialist feature generators (crush, china, fx, fed, tariff, energy, biofuel, palm, volatility, substitutes, trump_effect)
 - Specialist signal extraction (33 composite signal columns)
-- AutoGluon training (4 horizons × 19-model zoo)
+- AutoGluon training (3 horizons × 19-model zoo: 30d/90d/180d)
 - Forward inference
-- Monte Carlo simulation (10,000 runs × 4 horizons)
+- Monte Carlo simulation (10,000 runs × 3 horizons)
 - GARCH volatility modeling
 - Target Zone computation (P30/P50/P70)
 - All correlation and indicator calculations

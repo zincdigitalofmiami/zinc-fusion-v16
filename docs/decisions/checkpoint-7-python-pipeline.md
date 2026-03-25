@@ -36,8 +36,8 @@ supply.* ─────────┘          (11 files, 1 per specialist)   
                    └──→ [3] generate_specialist_signals.py ──→ data/specialist_signals.parquet
                                                                  (33 signal columns)
                    ┌─── data/matrix_1d.parquet + specialist_signals ──┐
-                   └──→ [4] train_models.py ──→ models/core_v2/{5d,21d,63d,126d}/
-                        ⚠️ GATED: --approve-training     (19-model zoo × 4 horizons)
+                   └──→ [4] train_models.py ──→ models/core_v2/{30d,90d,180d}/
+                        ⚠️ GATED: --approve-training     (19-model zoo × 3 horizons)
                                                                 │
                    ┌─── models/ + latest features ──────────────┘
                    └──→ [5] generate_forward_forecasts.py ──→ data/production_1d_staging.parquet
@@ -47,7 +47,7 @@ mkt.price_1d ─────┐──→ [6] run_garch.py ──→ data/garch_f
                    │
                    ├─── data/production_1d + garch_forecasts ──┐
                    └──→ [7] run_monte_carlo.py ──→ data/monte_carlo_runs.parquet
-                                                    (10,000 runs × 4 horizons = 40,000 rows)
+                                                    (10,000 runs × 3 horizons = 30,000 rows)
                                                     data/probability_distributions.parquet
                    ┌─── production + MC + GARCH ──────────────┐
                    └──→ [8] generate_target_zones.py ──→ data/target_zones_staging.parquet
@@ -159,11 +159,11 @@ PIPELINE_ORDER has garch after monte-carlo. Must be corrected. See BUG section a
 | **train_models** | **HIGH** (all cores) | **8-16GB** | **~2GB model artifacts** | **2-6 hours** |
 | forward_forecasts | Medium | ~2GB | ~10MB | Minutes |
 | run_garch | Low | <1GB | ~5MB | Seconds |
-| run_monte_carlo | Medium | ~4GB (40K rows) | ~200MB | Minutes |
+| run_monte_carlo | Medium | ~3GB (30K rows) | ~150MB | Minutes |
 | target_zones | Low | <1GB | ~1MB | Seconds |
 | promote_to_cloud | Trivial | <100MB | N/A | Seconds |
 
-**Training is the bottleneck.** AutoGluon CPU-only on macOS ARM, 19-model zoo × 4 horizons. Deep learning models disabled. The training gate exists for good reason.
+**Training is the bottleneck.** AutoGluon CPU-only on macOS ARM, 19-model zoo × 3 horizons (30d/90d/180d). Deep learning models disabled. The training gate exists for good reason.
 
 ---
 
