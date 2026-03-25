@@ -8,6 +8,6 @@ Sequential gate verification for ZINC Fusion V16 execution phases.
 
 ---
 
-Read the full skill file at `.github/skills/pipeline-phase-gate/SKILL.md` and follow it exactly — including all loop structure, Loop 0.5 approval gate, per-gate sequential loop, commit gates, and Hard Rules. Do not skip or abbreviate any loop.
+Read the full skill file at `.kilo/skills/pipeline-phase-gate/SKILL.md` and follow it exactly — including all loop structure, Loop 0.5 approval gate, per-gate sequential loop, commit gates, and Hard Rules. Do not skip or abbreviate any loop.
 
 $ARGUMENTS

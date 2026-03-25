@@ -14,6 +14,6 @@ Comprehensive data health audit for ZINC Fusion V16.
 
 ---
 
-Read the full skill file at `.kilocode/skills/data-review/SKILL.md` and follow it exactly — including all loop structure, approval gates, commit intent gates, and Hard Rules. Reference files are at `.kilocode/skills/data-review/references/` — load them as needed during the audit. The freshness SQL script is at `.kilocode/skills/data-review/scripts/freshness_report.sql`. Do not skip or abbreviate any loop.
+Read the full skill file at `.kilo/skills/data-review/SKILL.md` and follow it exactly — including all loop structure, approval gates, commit intent gates, and Hard Rules. Reference files are at `.kilo/skills/data-review/references/` — load them as needed during the audit. The freshness SQL script is at `.kilo/skills/data-review/scripts/freshness_report.sql`. Do not skip or abbreviate any loop.
 
 $ARGUMENTS

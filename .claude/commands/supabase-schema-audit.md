@@ -8,6 +8,6 @@ Systematic per-schema audit of the ZINC Fusion V16 Supabase cloud database.
 
 ---
 
-Read the full skill file at `.github/skills/supabase-schema-audit/SKILL.md` and follow it exactly — including all loop structure, Loop 1.5 approval gate, double-confirmation for `db push`, commit pattern, and Hard Rules. Do not skip or abbreviate any loop.
+Read the full skill file at `.kilo/skills/supabase-schema-audit/SKILL.md` and follow it exactly — including all loop structure, Loop 1.5 approval gate, double-confirmation for `db push`, commit pattern, and Hard Rules. Do not skip or abbreviate any loop.
 
 $ARGUMENTS

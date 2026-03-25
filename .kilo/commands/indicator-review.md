@@ -14,6 +14,6 @@ Math, logic, and signal-value audit for ZINC Fusion V16 indicators and specialis
 
 ---
 
-Read the full skill file at `.kilocode/skills/indicator-review/SKILL.md` and follow it exactly — including all loop structure, Loop 4.5 approval gate, risk-tiered change plan format, commit intent gate, and Hard Rules. Do not skip or abbreviate any loop.
+Read the full skill file at `.kilo/skills/indicator-review/SKILL.md` and follow it exactly — including all loop structure, Loop 4.5 approval gate, risk-tiered change plan format, commit intent gate, and Hard Rules. Do not skip or abbreviate any loop.
 
 $ARGUMENTS

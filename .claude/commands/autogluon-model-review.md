@@ -8,6 +8,6 @@ Iterative audit of the ZINC Fusion V16 AutoGluon training pipeline (`python/fusi
 
 ---
 
-Read the full skill file at `.github/skills/autogluon-model-review/SKILL.md` and follow it exactly — including all loop structure, approval gates, commit intent gates, Hard Rules, and project constants. Do not skip or abbreviate any loop.
+Read the full skill file at `.kilo/skills/autogluon-model-review/SKILL.md` and follow it exactly — including all loop structure, approval gates, commit intent gates, Hard Rules, and project constants. Do not skip or abbreviate any loop.
 
 $ARGUMENTS

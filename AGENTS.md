@@ -16,20 +16,20 @@ Commodity procurement forecasting system for ZL (soybean oil futures). Clean-roo
 
 ## Tech Stack
 
-| Layer                  | Technology                                         |
-| ---------------------- | -------------------------------------------------- |
-| **Database**           | Supabase Postgres — cloud only, no local Supabase  |
+| Layer                  | Technology                                              |
+| ---------------------- | ------------------------------------------------------- |
+| **Database**           | Supabase Postgres — cloud only, no local Supabase       |
 | **Schema mgmt**        | Supabase CLI migrations (SQL-first, `db push` to cloud) |
-| **Frontend**           | Next.js 14+ on Vercel (frontend hosting ONLY)      |
-| **UI System**          | shadcn/ui + Radix primitives + Tailwind CSS        |
-| **Data ingestion**     | pg_cron + `http` extension (inside Postgres, $0 cost) |
-| **DB client (TS)**     | Supabase JS client (reads only)                    |
-| **DB client (Python)** | psycopg2 direct to cloud Supabase Postgres         |
-| **ML**                 | AutoGluon (CPU-only), custom specialist models     |
-| **Auth**               | Supabase Auth                                      |
-| **API secrets**        | Supabase Vault (accessed via `current_setting()`)  |
-| **Package mgr**        | npm (frontend), uv (Python)                        |
-| **Env mgmt**           | Vercel <> Supabase integration, `vercel env pull`  |
+| **Frontend**           | Next.js 14+ on Vercel (frontend hosting ONLY)           |
+| **UI System**          | shadcn/ui + Radix primitives + Tailwind CSS             |
+| **Data ingestion**     | pg_cron + `http` extension (inside Postgres, $0 cost)   |
+| **DB client (TS)**     | Supabase JS client (reads only)                         |
+| **DB client (Python)** | psycopg2 direct to cloud Supabase Postgres              |
+| **ML**                 | AutoGluon (CPU-only), custom specialist models          |
+| **Auth**               | Supabase Auth                                           |
+| **API secrets**        | Supabase Vault (accessed via `current_setting()`)       |
+| **Package mgr**        | npm (frontend), uv (Python)                             |
+| **Env mgmt**           | Vercel <> Supabase integration, `vercel env pull`       |
 
 ---
 
@@ -92,20 +92,20 @@ Never use these in code, comments, UI, or conversation:
 
 Full details in the migration plan. Quick reference:
 
-| Phase  | What                           | Key Deliverable                                 |
-| ------ | ------------------------------ | ----------------------------------------------- |
-| **0**  | Infrastructure foundation      | Supabase cloud + Vercel + shadcn/ui + health route |
-| **1**  | Schema & seed                  | All 9 schemas, RLS, indexes, Gate 2 passes      |
-| **1.5** | **All page rewrites**         | All 6 pages rewritten from scratch (legacy baseline visual ref only). Empty state until data wired. |
-| **2**  | Read path — chart & live price | Chart renders with real data from Supabase      |
-| **3**  | Landing page completion        | Faithful rewrite of legacy baseline landing design          |
-| **4**  | Data ingestion (pg_cron+http)  | ZL daily, intraday, FRED, futures — all via Supabase pg_cron |
-| **5**  | Python pipeline rebuild        | Full ML pipeline, local files for intermediates, promote to cloud |
-| **6**  | Remaining ingestion + ProFarmer | All data sources feeding via pg_cron+http, ProFarmer Playwright |
-| **7**  | Dashboard completion           | Target Zones, drivers, regime, cards — all live |
-| **8**  | Secondary pages wiring         | Sentiment, Legislation, Strategy, Vegas Intel — real data |
-| **9**  | Auth & observability           | Supabase Auth, monitoring, Gate 3 passes        |
-| **10** | Parallel validation & cutover  | legacy baseline/V16 parity confirmed, traffic switched      |
+| Phase   | What                            | Key Deliverable                                                                                     |
+| ------- | ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **0**   | Infrastructure foundation       | Supabase cloud + Vercel + shadcn/ui + health route                                                  |
+| **1**   | Schema & seed                   | All 9 schemas, RLS, indexes, Gate 2 passes                                                          |
+| **1.5** | **All page rewrites**           | All 6 pages rewritten from scratch (legacy baseline visual ref only). Empty state until data wired. |
+| **2**   | Read path — chart & live price  | Chart renders with real data from Supabase                                                          |
+| **3**   | Landing page completion         | Faithful rewrite of legacy baseline landing design                                                  |
+| **4**   | Data ingestion (pg_cron+http)   | ZL daily, intraday, FRED, futures — all via Supabase pg_cron                                        |
+| **5**   | Python pipeline rebuild         | Full ML pipeline, local files for intermediates, promote to cloud                                   |
+| **6**   | Remaining ingestion + ProFarmer | All data sources feeding via pg_cron+http, ProFarmer Playwright                                     |
+| **7**   | Dashboard completion            | Target Zones, drivers, regime, cards — all live                                                     |
+| **8**   | Secondary pages wiring          | Sentiment, Legislation, Strategy, Vegas Intel — real data                                           |
+| **9**   | Auth & observability            | Supabase Auth, monitoring, Gate 3 passes                                                            |
+| **10**  | Parallel validation & cutover   | legacy baseline/V16 parity confirmed, traffic switched                                              |
 
 ---
 
@@ -322,15 +322,15 @@ Mandatory planning defaults:
 
 ## Skills
 
-For Kilo, four structured audit skills live in `.kilocode/skills/`. Copilot can keep its own copies under `.github/skills/`. Each skill has a full loop-based workflow with approval gates, commit intent gates, and Hard Rules. Read the full SKILL.md before starting any skill — do not shortcut the loops.
+For Kilo, four structured audit skills live in `.kilo/skills/`. Treat `.kilo/` as the shared source of truth for Kilo rules, skills, and workflows. Each skill has a full loop-based workflow with approval gates, commit intent gates, and Hard Rules. Read the full SKILL.md before starting any skill — do not shortcut the loops.
 
-| Skill                      | File                                             | When to Use                                                                                                                                                                                                                                        |
-| -------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **autogluon-model-review** | `.kilocode/skills/autogluon-model-review/SKILL.md` | Reviewing `python/fusion/` — model config, training gate, specialist/horizon structure, AutoGluon gotchas, Phase 5 readiness                                                                                                                       |
-| **pipeline-phase-gate**    | `.kilocode/skills/pipeline-phase-gate/SKILL.md`    | Declaring a phase done, verifying Gates 1–6 have documented passing evidence, checking phase hand-off readiness                                                                                                                                    |
-| **supabase-schema-audit**  | `.kilocode/skills/supabase-schema-audit/SKILL.md`  | Auditing RLS, constraints, indexes, migration drift, all 9 schemas present and correct                                                                                                                                                             |
-| **indicator-review**       | `.kilocode/skills/indicator-review/SKILL.md`       | Verifying indicator math, checking signal value for ZL forecasting, identifying overtooled/redundant features, auditing GARCH/Monte Carlo specs                                                                                                    |
-| **data-review**            | `.kilocode/skills/data-review/SKILL.md`            | Auditing data freshness across all tables, checking pg_cron pipeline health, verifying all 11 specialists have required data, assessing whether 2026 macro/trade/policy environment is captured in training data, producing prioritized gap report |
+| Skill                      | File                                           | When to Use                                                                                                                                                                                                                                        |
+| -------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **autogluon-model-review** | `.kilo/skills/autogluon-model-review/SKILL.md` | Reviewing `python/fusion/` — model config, training gate, specialist/horizon structure, AutoGluon gotchas, Phase 5 readiness                                                                                                                       |
+| **pipeline-phase-gate**    | `.kilo/skills/pipeline-phase-gate/SKILL.md`    | Declaring a phase done, verifying Gates 1–6 have documented passing evidence, checking phase hand-off readiness                                                                                                                                    |
+| **supabase-schema-audit**  | `.kilo/skills/supabase-schema-audit/SKILL.md`  | Auditing RLS, constraints, indexes, migration drift, all 9 schemas present and correct                                                                                                                                                             |
+| **indicator-review**       | `.kilo/skills/indicator-review/SKILL.md`       | Verifying indicator math, checking signal value for ZL forecasting, identifying overtooled/redundant features, auditing GARCH/Monte Carlo specs                                                                                                    |
+| **data-review**            | `.kilo/skills/data-review/SKILL.md`            | Auditing data freshness across all tables, checking pg_cron pipeline health, verifying all 11 specialists have required data, assessing whether 2026 macro/trade/policy environment is captured in training data, producing prioritized gap report |
 
 **Rules for all skills:**
 

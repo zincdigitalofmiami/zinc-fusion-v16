@@ -14,6 +14,6 @@ Per-schema audit of the ZINC Fusion V16 Supabase cloud database.
 
 ---
 
-Read the full skill file at `.kilocode/skills/supabase-schema-audit/SKILL.md` and follow it exactly — including all loop structure, per-schema loop, migration loop for failures, commit after each clean schema, final re-audit, and Hard Rules. Do not skip or abbreviate any loop.
+Read the full skill file at `.kilo/skills/supabase-schema-audit/SKILL.md` and follow it exactly — including all loop structure, per-schema loop, migration loop for failures, commit after each clean schema, final re-audit, and Hard Rules. Do not skip or abbreviate any loop.
 
 $ARGUMENTS
