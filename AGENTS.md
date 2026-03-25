@@ -303,9 +303,10 @@ Mandatory planning defaults:
 1. Audit repository reality before making architecture or refactoring decisions.
 2. Write plan documents as numbered checkpoints that capture decisions, not implementation tasks.
 3. Run one Ralph Loop per checkpoint and write a decision document for each checkpoint.
-4. Update canonical planning docs and [`AGENTS.md`](AGENTS.md) whenever a checkpoint changes verified ground truth.
-5. Implement only after all checkpoint decisions are locked.
-6. Keep all naming scoped to ZINC Fusion V16 in this repository. Do not introduce or reuse `external project` naming, references, or examples here.
+4. Treat [`docs/plans/2026-03-17-v16-migration-plan.md`](docs/plans/2026-03-17-v16-migration-plan.md) as the canonical build plan. If a small plan or checkpoint note is needed, integrate it back into the canonical plan rather than letting it become a competing source of truth.
+5. Update canonical planning docs and [`AGENTS.md`](AGENTS.md) whenever a checkpoint changes verified ground truth.
+6. Implement only after all checkpoint decisions are locked.
+7. Keep all naming scoped to ZINC Fusion V16 in this repository. Do not introduce or reuse `external project` naming, references, or examples here.
 
 ### Reasoning Guardrails
 
@@ -322,15 +323,19 @@ Mandatory planning defaults:
 
 ## Skills
 
-For Kilo, four structured audit skills live in `.kilo/skills/`. Treat `.kilo/` as the shared source of truth for Kilo rules, skills, and workflows. Each skill has a full loop-based workflow with approval gates, commit intent gates, and Hard Rules. Read the full SKILL.md before starting any skill — do not shortcut the loops.
+For Kilo, nine structured audit and planning skills live in `.kilo/skills/`. Treat `.kilo/` as the shared source of truth for Kilo rules, skills, and workflows. Each skill has a full loop-based workflow with approval gates, commit intent gates, and Hard Rules. Read the full SKILL.md before starting any skill — do not shortcut the loops.
 
-| Skill                      | File                                           | When to Use                                                                                                                                                                                                                                        |
-| -------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **autogluon-model-review** | `.kilo/skills/autogluon-model-review/SKILL.md` | Reviewing `python/fusion/` — model config, training gate, specialist/horizon structure, AutoGluon gotchas, Phase 5 readiness                                                                                                                       |
-| **pipeline-phase-gate**    | `.kilo/skills/pipeline-phase-gate/SKILL.md`    | Declaring a phase done, verifying Gates 1–6 have documented passing evidence, checking phase hand-off readiness                                                                                                                                    |
-| **supabase-schema-audit**  | `.kilo/skills/supabase-schema-audit/SKILL.md`  | Auditing RLS, constraints, indexes, migration drift, all 9 schemas present and correct                                                                                                                                                             |
-| **indicator-review**       | `.kilo/skills/indicator-review/SKILL.md`       | Verifying indicator math, checking signal value for ZL forecasting, identifying overtooled/redundant features, auditing GARCH/Monte Carlo specs                                                                                                    |
-| **data-review**            | `.kilo/skills/data-review/SKILL.md`            | Auditing data freshness across all tables, checking pg_cron pipeline health, verifying all 11 specialists have required data, assessing whether 2026 macro/trade/policy environment is captured in training data, producing prioritized gap report |
+| Skill                        | File                                             | When to Use                                                                                                                                                                                                                                        |
+| ---------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **autogluon-model-review**   | `.kilo/skills/autogluon-model-review/SKILL.md`   | Reviewing `python/fusion/` — model config, training gate, specialist/horizon structure, AutoGluon gotchas, Phase 5 readiness                                                                                                                       |
+| **pipeline-phase-gate**      | `.kilo/skills/pipeline-phase-gate/SKILL.md`      | Declaring a phase done, verifying Gates 1–6 have documented passing evidence, checking phase hand-off readiness                                                                                                                                    |
+| **supabase-schema-audit**    | `.kilo/skills/supabase-schema-audit/SKILL.md`    | Auditing RLS, constraints, indexes, migration drift, all 9 schemas present and correct                                                                                                                                                             |
+| **indicator-review**         | `.kilo/skills/indicator-review/SKILL.md`         | Verifying indicator math, checking signal value for ZL forecasting, identifying overtooled/redundant features, auditing GARCH/Monte Carlo specs                                                                                                    |
+| **data-review**              | `.kilo/skills/data-review/SKILL.md`              | Auditing data freshness across all tables, checking pg_cron pipeline health, verifying all 11 specialists have required data, assessing whether 2026 macro/trade/policy environment is captured in training data, producing prioritized gap report |
+| **supabase-build-planning**  | `.kilo/skills/supabase-build-planning/SKILL.md`  | Planning the build-out of all schemas and wiring while source contracts are still evolving, sequencing migration slices, and locking vendor-agnostic table contracts before implementation                                                         |
+| **local-cloud-sync-audit**   | `.kilo/skills/local-cloud-sync-audit/SKILL.md`   | Auditing local/cloud Supabase wiring, env contracts, pooler vs direct connections, linked-project drift, and Vault/pg_cron sync boundaries                                                                                                         |
+| **ml-database-audit**        | `.kilo/skills/ml-database-audit/SKILL.md`        | Designing or auditing `training`, `forecasts`, and `analytics` contracts, quant storage boundaries, and Target Zone persistence                                                                                                                    |
+| **autogluon-database-audit** | `.kilo/skills/autogluon-database-audit/SKILL.md` | Auditing AutoGluon registry/OOF/forecast persistence, local artifact boundaries, and validated promotion into Supabase cloud tables                                                                                                                |
 
 **Rules for all skills:**
 
