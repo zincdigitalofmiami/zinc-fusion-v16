@@ -135,7 +135,7 @@
 | Scenario | Approach | Why |
 |----------|----------|-----|
 | **Frontend dev** | Reads from cloud Supabase | Single source of truth. No local/cloud drift. `vercel env pull` provides connection. |
-| **Python training/inference** | Reads raw data from cloud Supabase. Writes intermediates to **LOCAL FILES** (parquet). Promotes validated outputs to cloud. | Large matrices stay local during iteration. Only final validated artifacts touch cloud DB. |
+| **Python training/inference** | Reads raw data from cloud Supabase (canonical). Writes intermediates to **local parquet files** during compute. Promotes validated outputs back to cloud. | Cloud is canonical. Local is a compute workspace — intermediates stay local during iteration. Only validated artifacts are promoted back to cloud DB. |
 | **Data ingestion** | Runs **INSIDE Postgres** via pg_cron + http extension | No Vercel cron routes. No external orchestrator. Ingestion is a database-native operation. |
 | **Supabase CLI** | Used for migrations ONLY (`supabase db push`, `supabase db diff --linked`) | No `supabase start`. No local Docker containers. No local Postgres. |
 
@@ -161,23 +161,49 @@
 |                      SUPABASE                              |
 |  Single cloud DB (9 schemas: mkt, econ, alt, supply,      |
 |    training, forecasts, analytics, ops, vegas)              |
-|  pg_cron + http extension (ALL data ingestion ~25 jobs)    |
+|  pg_cron + http extension (ALL data ingestion ~22 jobs)    |
 |  Vault (API keys via current_setting())                    |
 |  Auth (user authentication)                                |
 |  RLS policies per schema                                   |
 +-----------------------------------------------------------+
 
 +-----------------------------------------------------------+
-|              LOCAL MACHINE                                  |
+|              LOCAL MACHINE (compute workspace)              |
 |  Python ML Pipeline (rebuilt from scratch)                  |
 |  - Reads raw data from cloud Supabase via psycopg2         |
-|  - Writes intermediates to LOCAL FILES (parquet)           |
+|    (cloud is canonical — local never stores canonical data) |
+|  - Writes intermediates to local parquet files              |
 |  - promote_to_cloud.py pushes validated outputs to cloud   |
 |                                                            |
 |  ProFarmer Scraper (Python Playwright, system cron)        |
 |  - Writes directly to cloud Supabase                       |
 +-----------------------------------------------------------+
 ```
+
+### Cloud-Canonical Data Contract
+
+| Layer | Canonical Location | Notes |
+|-------|-------------------|-------|
+| Raw ingest tables (mkt, econ, alt, supply) | **Cloud Supabase** | pg_cron + http writes directly to cloud |
+| Serving tables (analytics, forecasts.target_zones) | **Cloud Supabase** | Dashboard reads from cloud |
+| Published forecasts / Target Zones | **Cloud Supabase** | Pre-computed, served to chart |
+| Training metadata (model_registry, training_runs) | **Cloud Supabase** | Registry of what was trained and when |
+| Ops observability (ingest_run, pipeline_alerts) | **Cloud Supabase** | All logging in cloud |
+| Wide intermediate artifacts (feature matrix, specialist parquets) | **Local compute workspace** | Parquet files during processing only — not canonical storage |
+| Model artifacts (AutoGluon model files) | **Local compute workspace** | Large binary artifacts, not in any database |
+
+**Training data storage architecture** (whether wide training artifacts should be retained locally vs promoted to cloud `training.*` tables) is a separate checkpoint decision, still gated. Current posture: cloud Supabase `training.*` tables exist and are the intended destination for `promote_to_cloud.py`. Local parquet files are ephemeral compute intermediates.
+
+### Cron-First Ingestion Contract
+
+All data ingestion runs inside Supabase Postgres via pg_cron + http extension. No ingestion readiness can be claimed until:
+
+1. **Functions exist** — plpgsql ingestion functions are deployed via migration
+2. **Cron jobs are registered** — `SELECT count(*) FROM cron.job` returns expected schedule count
+3. **First successful run** — each function has at least one `status = 'ok'` row in `ops.ingest_run`
+4. **Vault keys are stored** — `current_setting('app.<key>')` returns non-null for all configured sources
+
+**Current state (as of planning):** `cron.job` has 0 entries. Extensions pg_cron, http, pg_net are enabled. No ingestion functions exist. This is an explicit blocker for Gate 4.
 
 ---
 
@@ -338,14 +364,14 @@
 
 | Tier | Home | What Goes Here | Why |
 |------|------|----------------|-----|
-| **A** | **pg_cron + http extension (inside Postgres)** | All ~25 data ingestion jobs | plpgsql functions call external APIs via `http_get`/`http_post`, parse JSON, upsert to tables. Triggered by pg_cron. No external orchestrator. |
+| **A** | **pg_cron + http extension (inside Postgres)** | All ~22 data ingestion jobs | plpgsql functions call external APIs via `http_get`/`http_post`, parse JSON, upsert to tables. Triggered by pg_cron. No external orchestrator. |
 | **B** | **Supabase pg_cron** | DB-internal operations | Runs inside Postgres, zero network hops, SQL-native |
 | **C** | **Python workers (local/CI)** | Training pipeline, specialist signals, forecast generation, Monte Carlo, GARCH | Long-running compute, needs Python libs |
 | **D** | **Dedicated service** | ProFarmer scraper | Needs browser runtime |
 
-### Tier A: pg_cron + http Extension (~25 plpgsql Functions)
+### Tier A: pg_cron + http Extension (~22 plpgsql Functions)
 
-legacy baseline had 104 fragmented Inngest functions. V16 consolidates to ~25 plpgsql functions triggered by pg_cron, running entirely inside Postgres via the `http` extension. No Vercel cron routes. No external orchestrator.
+legacy baseline had 104 fragmented Inngest functions. V16 consolidates to ~22 plpgsql functions triggered by pg_cron, running entirely inside Postgres via the `http` extension. No Vercel cron routes. No external orchestrator. FRED is split into `ingest_fred_core()` (chart-critical minimum, Phase 4) and `ingest_fred_catalog()` (full expansion, Phase 6). Databento functions stay separate — different symbol sets, different failure domains (see checkpoint-4-job-architecture.md).
 
 **API keys** are stored in Supabase Vault and accessed via `current_setting()` inside plpgsql functions.
 
@@ -360,7 +386,8 @@ legacy baseline had 104 fragmented Inngest functions. V16 consolidates to ~25 pl
 | `ingest_fx_daily()` | `databento-fx-daily`, `fx-spot-daily`, `fx-databento-spot-daily` | Daily | mkt |
 | `ingest_etf_daily()` | `databento-etf-daily`, `databento-etf-vwap`, `yahoo-etf-fallback` | Daily 8 PM ET | mkt |
 | `ingest_indices_daily()` | `yahooIndicesDaily` | Daily | mkt |
-| `ingest_fred()` | 12 FRED functions (Fed, FX, Energy, Biofuel, Crush, Palm, Vol, Trump, China, General) | Every 8h | econ |
+| `ingest_fred_core()` | Chart-critical FRED subset: rates (DFF, DGS2, DGS10), vol indices (VIXCLS, OVXCLS), inflation (CPIAUCSL), activity (INDPRO), crude (DCOILWTICO), soy (WPU06410132, PCU3116133116132) | Every 8h | econ |
+| `ingest_fred_catalog()` | Full FRED catalog expansion: remaining 120+ series across all 8 econ tables (money supply, labor, weather proxies, extended commodity series) | Every 8h | econ |
 | `ingest_cftc_weekly()` | `cftcWeekly` | Friday 4 PM ET | mkt |
 | `ingest_usda_exports()` | `usdaExportSalesWeekly` | Thursday | supply |
 | `ingest_usda_wasde()` | `usdaWasdeMonthly` | Monthly | supply |
@@ -453,7 +480,7 @@ API keys for external data sources (Databento, FRED, etc.) are stored in **Supab
 
 ### Data Ingestion (pg_cron — NOT Vercel routes)
 
-All data ingestion runs as pg_cron + http plpgsql functions inside Supabase. No Vercel cron routes exist. See Section 5 Tier A for full list of ~25 pg_cron functions.
+All data ingestion runs as pg_cron + http plpgsql functions inside Supabase. No Vercel cron routes exist. See Section 5 Tier A for the current list of ~22 pg_cron functions.
 
 ### Auth Routes
 
@@ -509,8 +536,8 @@ Browser -> /api/zl/price-1d -> middleware checks Supabase session cookie
   -> if valid: query with supabase client (respects RLS)
   -> if not: 401
 
-pg_cron -> ingest_fred() plpgsql function -> runs inside Postgres as postgres role
-  -> no external auth needed, accesses API keys via Supabase Vault
+pg_cron -> ingest_fred_core() / ingest_fred_catalog() plpgsql functions -> run inside Postgres as postgres role
+  -> no external auth needed, access API keys via Supabase Vault
 ```
 
 ### Environment Variables
@@ -608,6 +635,17 @@ Env vars:
   SUPABASE_DB_URL       = direct connection
   SUPABASE_POOLER_URL   = pooled connection
 ```
+
+### Data Posture
+
+Cloud Supabase is canonical for all stored data. The Python pipeline is a compute client:
+
+- **Reads:** from cloud Supabase (canonical source) via psycopg2
+- **Computes:** locally — all feature engineering, training, forecasting, simulation runs on local machine
+- **Intermediates:** local parquet files — ephemeral compute artifacts, not canonical storage
+- **Promotes:** validated compact outputs back to cloud Supabase via `promote_to_cloud.py`
+
+Training data storage architecture (whether wide training artifacts like `training.matrix_1d` should be retained in cloud or live only as local parquet) is a separate checkpoint decision. Current design: `promote_to_cloud.py` pushes to cloud `training.*` tables. This may be refined under a future checkpoint.
 
 ### Training Gate (carried from legacy baseline — still mandatory)
 
@@ -818,7 +856,61 @@ V16 tokens for shadcn/ui customization:
 | Supabase Auth callback route works | Login -> callback -> session -> authenticated read succeeds |
 | Python pipeline uses direct connection for bulk writes | Connection string check |
 
-### Gate 4: Data Flow Verification
+### Gate 4A: Cron Readiness Preflight (NEW — blocks Gate 4)
+
+**Before any Gate 4 claim, cron infrastructure must be verified:**
+
+| Check | SQL Validation | Evidence Required |
+|-------|---------------|-------------------|
+| pg_cron extension enabled | `SELECT count(*) FROM pg_extension WHERE extname = 'pg_cron'` = 1 | Extension active |
+| http extension enabled | `SELECT count(*) FROM pg_extension WHERE extname = 'http'` = 1 | Extension active |
+| Ingestion functions exist | `SELECT count(*) FROM pg_proc WHERE proname LIKE 'ingest_%'` ≥ expected count | Functions deployed via migration |
+| Cron jobs registered | `SELECT count(*) FROM cron.job` ≥ Phase 4 expected schedule count | Schedules active |
+| No duplicate job names | `SELECT jobname, count(*) FROM cron.job GROUP BY jobname HAVING count(*) > 1` = 0 rows | No duplicates |
+| No duplicate function names | `SELECT proname, count(*) FROM pg_proc WHERE proname LIKE 'ingest_%' GROUP BY proname HAVING count(*) > 1` = 0 rows | No duplicates |
+| Vault keys stored | `SELECT current_setting('app.databento_api_key') IS NOT NULL` (repeat per source) | Keys accessible |
+| At least one successful run per Phase 4 function | `SELECT DISTINCT job_name FROM ops.ingest_run WHERE status = 'ok'` ⊇ Phase 4 functions | First-success evidence |
+
+**Preflight SQL block (run before claiming Gate 4):**
+
+```sql
+-- 1. Extension check
+SELECT extname FROM pg_extension WHERE extname IN ('pg_cron', 'http', 'pg_net');
+
+-- 2. Schedule density
+SELECT count(*) AS total_jobs FROM cron.job;
+
+-- 3. Duplicate job name audit
+SELECT jobname, count(*) FROM cron.job GROUP BY jobname HAVING count(*) > 1;
+
+-- 4. Duplicate function name audit
+SELECT proname, count(*) FROM pg_proc
+WHERE proname LIKE 'ingest_%' AND pronamespace = 'public'::regnamespace
+GROUP BY proname HAVING count(*) > 1;
+
+-- 5. Critical source health (staleness per table)
+SELECT 'mkt.price_1d' AS tbl, max(bucket_ts) AS latest, now() - max(bucket_ts) AS age FROM mkt.price_1d
+UNION ALL
+SELECT 'mkt.latest_price', max(updated_at), now() - max(updated_at) FROM mkt.latest_price
+UNION ALL
+SELECT 'econ.rates_1d', max(observation_date), now() - max(observation_date)::timestamp FROM econ.rates_1d;
+
+-- 6. Vault key accessibility
+SELECT current_setting('app.databento_api_key', true) IS NOT NULL AS databento_key_set,
+       current_setting('app.fred_api_key', true) IS NOT NULL AS fred_key_set;
+
+-- 7. First-success evidence
+SELECT job_name, min(started_at) AS first_success
+FROM ops.ingest_run WHERE status = 'ok' GROUP BY job_name;
+
+-- 8. Duplicate ingested row check (example for price_1d)
+SELECT symbol, bucket_ts, count(*) FROM mkt.price_1d
+GROUP BY symbol, bucket_ts HAVING count(*) > 1;
+```
+
+**Gate 4A MUST pass before Gate 4 can be claimed.** If `cron.job` is empty, Gate 4 is blocked regardless of function existence.
+
+### Gate 4: Data Flow Verification (requires Gate 4A)
 
 | Check | Evidence Required |
 |-------|-------------------|
@@ -828,6 +920,9 @@ V16 tokens for shadcn/ui customization:
 | Target Zones render on chart | ForecastTargetsPrimitive draws P30/P50/P70 lines |
 | Live price updates | latest_price timestamp is recent |
 | Freshness monitor fires and reports correctly | After 24h, check ops.pipeline_alerts |
+| Gate 4A preflight passes | All cron readiness checks from Gate 4A pass |
+| No stale critical tables | `check_freshness()` confirms chart-critical tables within staleness thresholds |
+| No duplicate ingested rows | `(source, symbol, bucket_ts)` uniqueness verified on OHLCV tables |
 
 ### Gate 5: Python Pipeline Verification
 
@@ -962,27 +1057,45 @@ All 6 pages are rewritten from scratch using legacy baseline as **VISUAL referen
 
 **Exit criteria:** Landing page is visually faithful to legacy baseline. CTA leads to dashboard.
 
+### Phase 4A: Cron Infrastructure Preflight (NEW — before Phase 4)
+
+**Entry:** Phase 2 complete. Extensions enabled (verified in CP1). Vault keys not yet stored. cron.job empty.
+
+This phase establishes cron readiness before any ingestion function is built. No runtime ingestion claims until this phase exits cleanly.
+
+| Step | Action | Exit Evidence |
+|------|--------|---------------|
+| 4A.1 | Store all required API keys in Supabase Vault (Databento, FRED, FAS, etc.) | `current_setting('app.databento_api_key')` returns non-null inside plpgsql |
+| 4A.2 | Verify pg_cron extension is operational | `SELECT count(*) FROM cron.job` succeeds (returns 0 — no jobs yet, but table accessible) |
+| 4A.3 | Verify http extension can make outbound calls | Test `SELECT http_get('https://httpbin.org/get')` succeeds inside a plpgsql block |
+| 4A.4 | Create `ops.ingest_run` logging pattern (if not already present) | Logging table and insert function verified |
+| 4A.5 | Run Gate 4A preflight SQL block | All checks pass (extensions present, vault keys accessible, no duplicate names) |
+
+**Exit criteria:** Vault keys stored, extensions operational, Gate 4A preflight passes. Phase 4 can begin.
+
 ### Phase 4: Data Ingestion — Critical pg_cron Functions
 
-**Entry:** Phase 2 complete. Chart needs fresh data, not just seed data.
+**Entry:** Phase 4A complete (cron infrastructure verified). Chart needs fresh data, not just seed data.
 
 All data ingestion is implemented as plpgsql functions using pg_cron + http extension inside Supabase. No Vercel cron routes. No vercel.json cron config. API keys stored in Supabase Vault.
 
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
-| 4.1 | Store API keys (Databento, FRED, etc.) in Supabase Vault | `current_setting('app.databento_api_key')` returns key inside plpgsql |
+| 4.1 | (Completed in Phase 4A — Vault keys already stored) | Verified in Phase 4A exit |
 | 4.2 | Build `ingest_zl_daily()` plpgsql function (ZL daily OHLCV via http extension) | New rows in mkt.price_1d after pg_cron fires |
 | 4.3 | Build `ingest_zl_intraday()` plpgsql function (1h + 15m via http extension) | Intraday bars populating |
-| 4.4 | Build `ingest_fred()` plpgsql function (consolidated — all FRED series) | econ.* tables updating |
+| 4.4 | Build `ingest_fred_core()` plpgsql function (chart-critical FRED subset: rates, vol indices, inflation, activity, crude, tallow PPI) | Core econ.* tables updating with chart-critical series |
 | 4.5 | Build `ingest_databento_futures()` plpgsql function (all futures + stats) | mkt.futures_1d updating |
 | 4.6 | Build `ingest_databento_options()` plpgsql function | mkt.options_1d updating |
 | 4.7 | Build `ingest_fx_daily()` plpgsql function | mkt.fx_1d updating |
 | 4.8 | Build `ingest_etf_daily()` plpgsql function | mkt.etf_1d updating |
 | 4.9 | Build `ingest_cftc_weekly()` plpgsql function | mkt.cftc_1w updating |
-| 4.10 | Register all pg_cron schedules for steps 4.2-4.9 | pg_cron jobs visible in Supabase dashboard, firing on schedule |
+| 4.10 | Register all pg_cron schedules for steps 4.2-4.9 | `SELECT count(*) FROM cron.job` ≥ expected Phase 4 count |
 | 4.11 | Build `check_freshness()` plpgsql function | ops.pipeline_alerts populating |
+| 4.12 | Verify at least one successful controlled run of each Phase 4 function | `ops.ingest_run` has `status = 'ok'` row for each function |
+| 4.13 | Run Gate 4A preflight again (post-registration) | All cron readiness checks pass with registered jobs |
 
-**Exit criteria:** Chart shows today's data. Core market tables updating on schedule via pg_cron. Freshness monitoring active. No Vercel cron routes.
+**Exit criteria:** Chart shows today's data. Core market tables updating on schedule via pg_cron. `ingest_fred_core()` feeding chart-critical FRED series. Freshness monitoring active. Gate 4A re-verified with registered jobs. No Vercel cron routes. `cron.job` count matches expected Phase 4 schedule density.
 
 ### Phase 5: Python Pipeline Rebuild
 
@@ -1008,12 +1121,13 @@ Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only vali
 
 **Exit criteria:** Full pipeline runs end-to-end. Intermediates stored locally as parquet. Promotion gate validates before cloud write. Target Zones appear on dashboard chart after promotion.
 
-### Phase 6: Remaining Data Ingestion Crons
+### Phase 6: Remaining Data Ingestion + FRED Catalog Expansion
 
 **Entry:** Phase 4 complete.
 
 | Step | Action | Exit Evidence |
 |------|--------|---------------|
+| 6.0 | Build `ingest_fred_catalog()` plpgsql function (full FRED catalog: remaining 120+ series across all 8 econ tables) | All econ.* tables fully populated with complete FRED series set |
 | 6.1 | Build `ingest_supply_monthly()` plpgsql function (CONAB, Argentina, MPOB, China, FAS) | supply.* tables updating |
 | 6.2 | Build `ingest_usda_exports()` + `ingest_usda_wasde()` plpgsql functions | supply.usda_* updating |
 | 6.3 | Build `ingest_eia_biodiesel()` plpgsql function | supply.eia_biodiesel_1m updating |
@@ -1128,6 +1242,8 @@ Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only vali
 | **R10** | Schema drift on cloud Supabase | Low | Medium | Supabase CLI migrations as single source of truth (`db push`, `db diff --linked`). Never manual DDL. No local Supabase to drift. |
 | **R11** | pg_cron function timeout or http extension response limits | Low | Medium | pg_cron runs inside Postgres with configurable timeout. http extension handles standard REST APIs. ProFarmer stays as external Python scraper. |
 | **R12** | Env variable mismatch between environments | Low | Low | Vercel <> Supabase integration. `vercel env pull` for local. No manual .env copying. |
+| **R13** | Cron jobs not registered — ingestion claimed but not running | Medium | **Critical** | Gate 4A blocks all ingestion claims until `cron.job` has expected entries and first-success evidence exists in `ops.ingest_run`. Never claim ingestion readiness before registration. |
+| **R14** | FRED core/catalog split misses chart-critical series | Low | High | `ingest_fred_core()` explicitly includes rates, vol indices, inflation, activity, crude, tallow PPI. Catalog expansion deferred to Phase 6 — does not block chart rendering. |
 
 ---
 
@@ -1135,11 +1251,13 @@ Python pipeline writes all intermediates to **LOCAL FILES** (parquet). Only vali
 
 Run these first — they reveal architectural problems fastest:
 
-1. **Can Python connect to cloud Supabase and write a row?** If this fails, the entire training pipeline design is blocked.
-2. **Does the chart render with seeded data from Supabase?** If this fails, the core product is broken.
-3. **Does a single pg_cron + http plpgsql function fire, fetch data, and write to a table?** If this fails, the entire ingestion architecture is wrong.
-4. **Does Supabase Auth work with the shadcn/ui shell?** If this fails, the auth design needs rework.
-5. **Can `build_matrix.py` read from Supabase and assemble features?** If this fails, the Python <> Supabase data flow needs debugging.
+1. **Does Phase 4A verify cron readiness and first successful writes before claiming data readiness?** If `cron.job` is empty or no function has a successful `ops.ingest_run` entry, all downstream ingestion claims are false. Run the Gate 4A preflight SQL block.
+2. **Can Python connect to cloud Supabase and write a row?** If this fails, the entire training pipeline design is blocked.
+3. **Does the chart render with seeded data from Supabase?** If this fails, the core product is broken.
+4. **Does a single pg_cron + http plpgsql function fire, fetch data, and write to a table?** If this fails, the entire ingestion architecture is wrong.
+5. **Does Supabase Auth work with the shadcn/ui shell?** If this fails, the auth design needs rework.
+6. **Can `build_matrix.py` read from Supabase and assemble features?** If this fails, the Python <> Supabase data flow needs debugging.
+7. **Does `check_freshness()` detect and alert on stale data?** Simulate a stale source and verify `ops.pipeline_alerts` fires. This must work before Gate 4/Gate 5 claims.
 
 ---
 
