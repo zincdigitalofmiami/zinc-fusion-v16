@@ -360,7 +360,7 @@ export function ZlCandlestickChart({
       {/* Chart area */}
       <div className="relative w-full flex-1 min-h-0">
         {/* Watermark overlay */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1]">
           <Image
             src="/chart_watermark.svg"
             alt=""

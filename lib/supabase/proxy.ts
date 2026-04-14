@@ -2,8 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
 
-function isPublicPath(pathname: string): boolean {
-  return pathname === "/" || pathname.startsWith("/auth/");
+function isPublicPath(_pathname: string): boolean {
+  // Auth deferred to Phase 9 — all routes are public for now
+  return true;
 }
 
 function isCronPath(pathname: string): boolean {
